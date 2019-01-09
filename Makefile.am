@@ -3,7 +3,7 @@
 #
 
 ACLOCAL_AMFLAGS = -I m4
-AM_CPPFLAGS = -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/src -DONLY_MSPACES=1
 
 EXTRA_DIST = VERSION
 
@@ -35,6 +35,7 @@ libarmci_la_SOURCES = src/buffer.c        \
                       src/vector_nb.c     \
                       src/init_finalize.c \
                       src/conflict_tree.c \
+                      src/dlmalloc.c      \
                       src/parmci.c
 
 libarmci_la_LDFLAGS = -version-info $(libarmci_abi_version)
@@ -43,7 +44,7 @@ libarmcii_la_SOURCES = $(libarmci_la_SOURCES)
 libarmcii_la_LDFLAGS = $(libarmci_abi_version)
 
 include_HEADERS = src/armci.h src/armcix.h src/message.h src/mp3.h src/armciconf.h
-noinst_HEADERS = src/armci_internals.h src/conflict_tree.h src/debug.h src/gmr.h
+noinst_HEADERS = src/armci_internals.h src/conflict_tree.h src/debug.h src/gmr.h src/dlmalloc.h
 
 bin_PROGRAMS =
 check_PROGRAMS = 

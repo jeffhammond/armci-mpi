@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <mpi.h>
 
 #include <armci.h>
@@ -103,9 +104,19 @@ int ARMCI_Uses_shm(void) {
   return 0;
 }
 
-
+/** Limit the amount of memory ARMCI will allocate.
+  * This matters for slab allocation, including LIBVMEM support,
+  * but is otherwise ignored.
+  *
+  * A limit of 0 specifies no limit.
+  */
 void ARMCI_Set_shm_limit(unsigned long shmemlimit) {
-  return;
+  if (shmemlimit < SIZE_MAX || shmemlimit < LONG_MAX) {
+      ARMCII_GLOBAL_STATE.memory_limit = (armci_size_t)shmemlimit;
+  } else {
+      ARMCII_Warning("ARMCI_Set_shm_limit: invalid input (%lu) - ignoring...\n", shmemlimit);
+      ARMCII_GLOBAL_STATE.memory_limit = 0;
+  }
 }
 
 
@@ -160,6 +171,17 @@ int ARMCII_Getenv_int(const char *varname, int default_value) {
   const char *var = getenv(varname);
   if (var) {
     return atoi(var);
+  } else {
+    return default_value;
+  }
+}
+
+/** Retrieve the value of a long integer environment variable.
+  */
+long ARMCII_Getenv_long(const char *varname, long default_value) {
+  const char *var = getenv(varname);
+  if (var) {
+    return atol(var);
   } else {
     return default_value;
   }

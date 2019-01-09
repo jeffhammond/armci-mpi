@@ -64,6 +64,11 @@ static void * progress_function(void * arg)
 }
 #endif
 
+#include "dlmalloc.h"
+MPI_Win ARMCI_Slab_window;
+void*   ARMCI_Slab_baseptr;
+mspace  ARMCI_Slab_mspace;
+
 /* -- begin weak symbols block -- */
 #if defined(HAVE_PRAGMA_WEAK)
 #  pragma weak ARMCI_Init_thread = PARMCI_Init_thread
@@ -236,28 +241,29 @@ int PARMCI_Init_thread(int armci_requested) {
   }
 
   /* Use win_allocate or not, to work around MPI-3 RMA implementation bugs (now fixed) in MPICH. */
+  ARMCII_GLOBAL_STATE.use_win_allocate=ARMCII_Getenv_int("ARMCI_USE_WIN_ALLOCATE", 1);
 
-  int win_alloc_default = 1;
-  ARMCII_GLOBAL_STATE.use_win_allocate=ARMCII_Getenv_bool("ARMCI_USE_WIN_ALLOCATE", win_alloc_default);
+  /* Equivalent to ARMCI_Set_shm_limit - determines the size of:
+   * - MPI_Win_allocate slab in the case of slab allocation
+   * - volatile memory pool in the case of LIBVMEM
+   *
+   * The default must be zero to not break backwards compatibility, although
+   * NWChem should always set a value using ARMCI_Set_shm_limit.  */
+  ARMCII_GLOBAL_STATE.memory_limit=ARMCII_Getenv_long("ARMCI_SHM_LIMIT", 0);
 
   /* Poke the MPI progress engine at the end of nonblocking (NB) calls */
-
   ARMCII_GLOBAL_STATE.explicit_nb_progress=ARMCII_Getenv_bool("ARMCI_EXPLICIT_NB_PROGRESS", 1);
 
   /* Pass alloc_shm to win_allocate / alloc_mem */
-
   ARMCII_GLOBAL_STATE.use_alloc_shm=ARMCII_Getenv_bool("ARMCI_USE_ALLOC_SHM", 1);
 
   /* Enable RMA element-wise atomicity */
-
   ARMCII_GLOBAL_STATE.rma_atomicity=ARMCII_Getenv_bool("ARMCI_RMA_ATOMICITY", 1);
 
   /* Flush_local becomes flush */
-
   ARMCII_GLOBAL_STATE.end_to_end_flush=ARMCII_Getenv_bool("ARMCI_NO_FLUSH_LOCAL", 0);
 
   /* Use MPI_MODE_NOCHECK assertion */
-
   ARMCII_GLOBAL_STATE.rma_nocheck=ARMCII_Getenv_bool("ARMCI_RMA_NOCHECK", 1);
 
   /* Setup groups and communicators */
@@ -273,6 +279,19 @@ int PARMCI_Init_thread(int armci_requested) {
 
   MPI_Op_create(ARMCII_Msg_sel_min_op, 1 /* commute */, &ARMCI_MPI_SELMIN_OP);
   MPI_Op_create(ARMCII_Msg_sel_max_op, 1 /* commute */, &ARMCI_MPI_SELMAX_OP);
+
+  if (ARMCII_GLOBAL_STATE.use_win_allocate == ARMCII_SLAB_ALLOC_WINDOW_TYPE) {
+      if (ARMCII_GLOBAL_STATE.memory_limit == 0) {
+          ARMCII_Error(" requires a finite limit to create a memory pool!\n");
+      } else {
+          MPI_Win_allocate((MPI_Aint)ARMCII_GLOBAL_STATE.memory_limit, 1 /* disp */,
+                           MPI_INFO_NULL, ARMCI_GROUP_WORLD.comm,
+                           &ARMCI_Slab_baseptr,
+                           &ARMCI_Slab_window);
+          int locked = (armci_requested == MPI_THREAD_SERIALIZED || armci_requested == MPI_THREAD_MULTIPLE);
+          ARMCI_Slab_mspace = create_mspace_with_base(ARMCI_Slab_baseptr, ARMCII_GLOBAL_STATE.memory_limit, locked);
+      }
+  }
 
   ARMCII_GLOBAL_STATE.init_count++;
 
@@ -294,13 +313,32 @@ int PARMCI_Init_thread(int armci_requested) {
       }
 #endif
 
+      if (ARMCII_GLOBAL_STATE.memory_limit > 0) {
+          printf("  SHM_LIMIT              = %zu\n", ARMCII_GLOBAL_STATE.memory_limit);
+      } else {
+          printf("  SHM_LIMIT              = %s\n", "UNLIMITED");
+      }
+
       printf("  ALLOC_SHM used         = %s\n", ARMCII_GLOBAL_STATE.use_alloc_shm ? "TRUE" : "FALSE");
-      printf("  WINDOW type used       = %s\n", ARMCII_GLOBAL_STATE.use_win_allocate ? "ALLOCATE" : "CREATE");
-      if (ARMCII_GLOBAL_STATE.use_win_allocate) {
+
+      if (ARMCII_GLOBAL_STATE.use_win_allocate == 0) {
+          printf("  WINDOW type used       = %s\n", "CREATE");
+      }
+      else if (ARMCII_GLOBAL_STATE.use_win_allocate == 1) {
+          printf("  WINDOW type used       = %s\n", "ALLOCATE");
+      }
+      else if (ARMCII_GLOBAL_STATE.use_win_allocate == ARMCII_SLAB_ALLOC_WINDOW_TYPE) {
+          printf("  WINDOW type used       = %s\n", "ALLOCATE+SLAB");
+      }
+      else {
+          ARMCII_Error("You have selected an invalid window type!\n");
+      }
+
+      if (ARMCII_GLOBAL_STATE.use_win_allocate == 1) {
           /* Jeff: Using win_allocate leads to correctness issues with some
            *       MPI implementations since 3c4ad2abc8c387fcdec3a7f3f44fa5fd75653ece. */
           /* This is required on Cray systems with CrayMPI 7.0.0 (at least) */
-          /* Update (Feb. 2015): Xin and Min found the bug in Fetch_and_op and 
+          /* Update (Feb. 2015): Xin and Min found the bug in Fetch_and_op and
            *                     it is fixed upstream. */
           ARMCII_Warning("MPI_Win_allocate can lead to correctness issues.\n");
       }
@@ -437,6 +475,11 @@ int PARMCI_Finalize(void) {
   /* Only finalize on the last matching call */
   if (ARMCII_GLOBAL_STATE.init_count > 0) {
     return 0;
+  }
+
+  if (ARMCII_GLOBAL_STATE.use_win_allocate == ARMCII_SLAB_ALLOC_WINDOW_TYPE) {
+      MPI_Win_free(&ARMCI_Slab_window);
+      size_t freed = destroy_mspace(ARMCI_Slab_mspace);
   }
 
 #ifdef HAVE_PTHREADS

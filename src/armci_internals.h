@@ -18,6 +18,11 @@
 #  include <pthread.h>
 #endif
 
+/* slab allocation */
+#define ARMCII_SLAB_ALLOC_WINDOW_TYPE -200
+#define ONLY_MSPACES 1
+#include "dlmalloc.h"
+
 /* Likely/Unlikely macros borrowed from MPICH:
  */
 
@@ -82,12 +87,14 @@ typedef struct {
   int           progress_thread;        /* Create progress thread                                               */
   int           progress_usleep;        /* Argument to usleep() to throttling polling                           */
 #endif
-  int           use_win_allocate;       /* Use win_allocate or win_create                                       */
+  int           use_win_allocate;       /* Use win_allocate or win_create (or special memory...)                */
   int           explicit_nb_progress;   /* Poke the MPI progress engine at the end of nonblocking (NB) calls    */
   int           use_alloc_shm;          /* Pass alloc_shm info to win_allocate / alloc_mem                      */
   int           rma_atomicity;          /* Use Accumulate and Get_accumulate for Put and Get                    */
   int           end_to_end_flush;       /* All flush_local calls become flush                                   */
   int           rma_nocheck;            /* Use MPI_MODE_NOCHECK on synchronization calls that take assertion    */
+
+  armci_size_t  memory_limit;           /* upper bound on how much memory ARMCI can allocate                    */
 
   enum ARMCII_Strided_methods_e strided_method; /* Strided transfer method              */
   enum ARMCII_Iov_methods_e     iov_method;     /* IOV transfer method                  */
@@ -107,6 +114,9 @@ extern global_state_t ARMCII_GLOBAL_STATE;
 #ifdef HAVE_PTHREADS
 extern pthread_t      ARMCI_Progress_thread;
 #endif
+extern MPI_Win ARMCI_Slab_window;
+extern void*   ARMCI_Slab_baseptr;
+extern mspace  ARMCI_Slab_mspace;
 
 /* Utility functions */
 
@@ -114,6 +124,7 @@ void  ARMCII_Bzero(void *buf, armci_size_t size);
 char *ARMCII_Getenv(const char *varname);
 int   ARMCII_Getenv_bool(const char *varname, int default_value);
 int   ARMCII_Getenv_int(const char *varname, int default_value);
+long  ARMCII_Getenv_long(const char *varname, long default_value);
 
 /* Synchronization */
 
