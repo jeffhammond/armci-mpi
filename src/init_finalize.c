@@ -100,11 +100,10 @@ int PARMCI_Init_thread(int armci_requested) {
     int mpi_thread_level;
     MPI_Query_thread(&mpi_thread_level);
 
+    ARMCII_GLOBAL_STATE.thread_level = armci_requested;
     if (mpi_thread_level<armci_requested) {
       ARMCII_Error("MPI thread level below ARMCI thread level!");
     }
-
-    ARMCII_GLOBAL_STATE.thread_level = armci_requested;
 
 #ifdef HAVE_PTHREADS
     /* Check progress thread settings */
