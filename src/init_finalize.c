@@ -464,6 +464,8 @@ int PARMCI_Init_thread(int armci_requested) {
   * @return            Zero on success
   */
 int PARMCI_Init_args(int *argc, char ***argv) {
+  (void)argc;
+  (void)argv;
   return PARMCI_Init_thread(MPI_THREAD_SINGLE);
 }
 

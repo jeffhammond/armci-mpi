@@ -119,6 +119,7 @@ void ARMCI_Set_shm_limit(unsigned long shmemlimit) {
 
 
 int ARMCI_Uses_shm_grp(ARMCI_Group *group) {
+  (void)group;
   return 0;
 }
 

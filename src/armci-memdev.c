@@ -16,6 +16,7 @@
 /* -- end weak symbols block -- */
 int PARMCI_Malloc_memdev(void **ptr_arr, armci_size_t bytes, const char* device)
 {
+    (void)device;
     return ARMCI_Malloc_group(ptr_arr, bytes, &ARMCI_GROUP_WORLD);
 }
 
@@ -30,6 +31,7 @@ int PARMCI_Malloc_memdev(void **ptr_arr, armci_size_t bytes, const char* device)
 /* -- end weak symbols block -- */
 int PARMCI_Malloc_group_memdev(void **ptr_arr, armci_size_t bytes, ARMCI_Group *group, const char *device)
 {
+    (void)device;
     return ARMCI_Malloc_group(ptr_arr, bytes, group);
 }
 

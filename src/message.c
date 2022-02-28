@@ -232,6 +232,11 @@ void armci_msg_reduce(void *x, int n, char *op, int type) {
 
 
 void armci_msg_reduce_scope(int scope, void *x, int n, char *op, int type) {
+  (void)scope;
+  (void)x;
+  (void)n;
+  (void)op;
+  (void)type;
   ARMCII_Error("unimplemented"); // TODO
 }
 
@@ -289,6 +294,8 @@ MPI_Op ARMCI_MPI_SELMAX_OP;
 /** Min operator for armci_msg_sel
   */
 void ARMCII_Msg_sel_min_op(void *data_in, void *data_inout, int *len, MPI_Datatype *datatype) {
+  (void)datatype;
+
   sel_data_t *sd_1, *sd_2;
 
   sd_1 = (sel_data_t*) data_in;
@@ -336,6 +343,8 @@ void ARMCII_Msg_sel_min_op(void *data_in, void *data_inout, int *len, MPI_Dataty
 /** Min operator for armci_msg_sel
   */
 void ARMCII_Msg_sel_max_op(void *data_in, void *data_inout, int *len, MPI_Datatype *datatype) {
+  (void)datatype;
+
   sel_data_t *sd_1, *sd_2;
 
   sd_1 = (sel_data_t*) data_in;
