@@ -23,17 +23,17 @@
   * @param[in]  size      The size of the buffers (all are of the same size).
   * @return               Number of buffers that were moved.
   */
-int ARMCII_Buf_prepare_read_vec(void **orig_bufs, void ***new_bufs_ptr, int count, int size) {
+int ARMCII_Buf_prepare_read_vec(void **orig_bufs, void ***new_bufs_ptr, int count, int size)
+{
   int num_moved = 0;
 
   if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
     void **new_bufs = malloc(count*sizeof(void*));
-    int i;
 
-    for (i = 0; i < count; i++)
+    for (int i = 0; i < count; i++)
       new_bufs[i] = NULL;
 
-    for (i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
       // Check if the source buffer is within a shared region.  If so, copy it
       // into a private buffer.
       gmr_t *mreg = gmr_lookup(orig_bufs[i], ARMCI_GROUP_WORLD.rank);
@@ -70,11 +70,11 @@ int ARMCII_Buf_prepare_read_vec(void **orig_bufs, void ***new_bufs_ptr, int coun
   * @param[in]  count     Number of entries in the buffer list.
   * @param[in]  size      The size of the buffers (all are of the same size).
   */
-void ARMCII_Buf_finish_read_vec(void **orig_bufs, void **new_bufs, int count, int size) {
+void ARMCII_Buf_finish_read_vec(void **orig_bufs, void **new_bufs, int count, int size)
+{
   if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
-    int i;
 
-    for (i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
       if (orig_bufs[i] != new_bufs[i]) {
         MPI_Free_mem(new_bufs[i]);
       }
@@ -98,17 +98,17 @@ void ARMCII_Buf_finish_read_vec(void **orig_bufs, void **new_bufs, int count, in
   * @return               Number of buffers that were moved.
   */
 int ARMCII_Buf_prepare_acc_vec(void **orig_bufs, void ***new_bufs_ptr, int count, int size,
-                            int datatype, void *scale) {
-
+                               int datatype, void *scale)
+{
   void **new_bufs;
-  int i, scaled, num_moved = 0;
+  int scaled, num_moved = 0;
   
   new_bufs = malloc(count*sizeof(void*));
   ARMCII_Assert(new_bufs != NULL);
 
   scaled = ARMCII_Buf_acc_is_scaled(datatype, scale);
 
-  for (i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
     gmr_t *mreg = NULL;
 
     // Check if the source buffer is within a shared region.
@@ -154,10 +154,9 @@ int ARMCII_Buf_prepare_acc_vec(void **orig_bufs, void ***new_bufs_ptr, int count
   * @param[in]  count     Number of entries in the buffer list.
   * @param[in]  size      The size of the buffers (all are of the same size).
   */
-void ARMCII_Buf_finish_acc_vec(void **orig_bufs, void **new_bufs, int count, int size) {
-  int i;
-
-  for (i = 0; i < count; i++) {
+void ARMCII_Buf_finish_acc_vec(void **orig_bufs, void **new_bufs, int count, int size)
+{
+  for (int i = 0; i < count; i++) {
     if (orig_bufs[i] != new_bufs[i]) {
       MPI_Free_mem(new_bufs[i]);
     }
@@ -177,17 +176,18 @@ void ARMCII_Buf_finish_acc_vec(void **orig_bufs, void **new_bufs, int count, int
   * @param[in]  size      The size of the buffers (all are of the same size).
   * @return               Number of buffers that were moved.
   */
-int ARMCII_Buf_prepare_write_vec(void **orig_bufs, void ***new_bufs_ptr, int count, int size) {
+int ARMCII_Buf_prepare_write_vec(void **orig_bufs, void ***new_bufs_ptr, int count, int size)
+{
   int num_moved = 0;
 
   if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
     void **new_bufs = malloc(count*sizeof(void*));
-    int i;
 
-    for (i = 0; i < count; i++)
+    for (int i = 0; i < count; i++) {
       new_bufs[i] = NULL;
+    }
 
-    for (i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
       // Check if the destination buffer is within a shared region.  If not, create
       // a temporary private buffer to hold the result.
       gmr_t *mreg = gmr_lookup(orig_bufs[i], ARMCI_GROUP_WORLD.rank);
@@ -219,11 +219,11 @@ int ARMCII_Buf_prepare_write_vec(void **orig_bufs, void ***new_bufs_ptr, int cou
   * @param[in]  count     Number of entries in the buffer list.
   * @param[in]  size      The size of the buffers (all are of the same size).
   */
-void ARMCII_Buf_finish_write_vec(void **orig_bufs, void **new_bufs, int count, int size) {
+void ARMCII_Buf_finish_write_vec(void **orig_bufs, void **new_bufs, int count, int size)
+{
   if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
-    int i;
 
-    for (i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
       if (orig_bufs[i] != new_bufs[i]) {
         gmr_t *mreg = gmr_lookup(orig_bufs[i], ARMCI_GROUP_WORLD.rank);
         ARMCII_Assert(mreg != NULL);
@@ -247,7 +247,8 @@ void ARMCII_Buf_finish_write_vec(void **orig_bufs, void **new_bufs, int count, i
   * @param[in] scale    Value of type datatype to scale
   * @return             Nonzero if scale is not the identity scale
   */
-int ARMCII_Buf_acc_is_scaled(int datatype, void *scale) {
+int ARMCII_Buf_acc_is_scaled(int datatype, void *scale)
+{
   switch (datatype) {
     case ARMCI_ACC_INT:
       if (*((int*)scale) == 1)
@@ -300,9 +301,10 @@ int ARMCII_Buf_acc_is_scaled(int datatype, void *scale) {
   * @param[in]  scale     Scaling constant to apply to each buffer.
   * @return               Pointer to the new buffer or buf
   */
-void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, void *scale) {
-  int   j, nelem;
-  int   type_size = -1;
+void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, void *scale)
+{
+  int nelem;
+  int type_size = -1;
 
   switch (datatype) {
     case ARMCI_ACC_INT:
@@ -314,8 +316,9 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
         int *scl_i = (int*) buf_out;
         const int s = *((int*) scale);
 
-        for (j = 0; j < nelem; j++)
+        for (int j = 0; j < nelem; j++) {
           scl_i[j] = src_i[j]*s;
+        }
       }
       break;
 
@@ -328,8 +331,9 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
         long *scl_l = (long*) buf_out;
         const long s = *((long*) scale);
 
-        for (j = 0; j < nelem; j++)
+        for (int j = 0; j < nelem; j++) {
           scl_l[j] = src_l[j]*s;
+        }
       }
       break;
 
@@ -342,8 +346,9 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
         float *scl_f = (float*) buf_out;
         const float s = *((float*) scale);
 
-        for (j = 0; j < nelem; j++)
+        for (int j = 0; j < nelem; j++) {
           scl_f[j] = src_f[j]*s;
+        }
       }
       break;
 
@@ -356,8 +361,9 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
         double *scl_d = (double*) buf_out;
         const double s = *((double*) scale);
 
-        for (j = 0; j < nelem; j++)
+        for (int j = 0; j < nelem; j++) {
           scl_d[j] = src_d[j]*s;
+        }
       }
       break;
 
@@ -371,7 +377,7 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
         const float s_r = ((float*)scale)[0];
         const float s_c = ((float*)scale)[1];
 
-        for (j = 0; j < nelem; j += 2) {
+        for (int j = 0; j < nelem; j += 2) {
           // Complex multiplication: (a + bi)*(c + di)
           const float src_fc_j   = src_fc[j];
           const float src_fc_j_1 = src_fc[j+1];
@@ -395,7 +401,7 @@ void ARMCII_Buf_acc_scale(void *buf_in, void *buf_out, int size, int datatype, v
         const double s_r = ((double*)scale)[0];
         const double s_c = ((double*)scale)[1];
 
-        for (j = 0; j < nelem; j += 2) {
+        for (int j = 0; j < nelem; j += 2) {
           // Complex multiplication: (a + bi)*(c + di)
           const double src_dc_j   = src_dc[j];
           const double src_dc_j_1 = src_dc[j+1];
