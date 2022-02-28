@@ -20,51 +20,53 @@
   * @param[in] iov      Vector of transfer information.
   * @return             Logical true when regions overlap, 0 otherwise.
   */
-int ARMCII_Iov_check_overlap(void **ptrs, int count, int size) {
+int ARMCII_Iov_check_overlap(void **ptrs, int count, int size)
+{
 #ifndef NO_CHECK_OVERLAP
-#ifdef NO_USE_CTREE
-  int i, j;
+  #ifdef NO_USE_CTREE
 
-  if (!ARMCII_GLOBAL_STATE.iov_checks) return 0;
+    if (!ARMCII_GLOBAL_STATE.iov_checks) return 0;
 
-  for (i = 0; i < count; i++) {
-    for (j = i+1; j < count; j++) {
-      const uint8_t *ptr_1_lo = ptrs[i];
-      const uint8_t *ptr_1_hi = ((uint8_t*)ptrs[i]) + size - 1;
-      const uint8_t *ptr_2_lo = ptrs[j];
-      const uint8_t *ptr_2_hi = ((uint8_t*)ptrs[j]) + size - 1;
+    for (int i = 0; i < count; i++) {
+      for (int j = i+1; j < count; j++) {
+        const uint8_t *ptr_1_lo = ptrs[i];
+        const uint8_t *ptr_1_hi = ((uint8_t*)ptrs[i]) + size - 1;
+        const uint8_t *ptr_2_lo = ptrs[j];
+        const uint8_t *ptr_2_hi = ((uint8_t*)ptrs[j]) + size - 1;
 
-      if (   (ptr_1_lo >= ptr_2_lo && ptr_1_lo <= ptr_2_hi)
-          || (ptr_1_hi >= ptr_2_lo && ptr_1_hi <= ptr_2_hi)
-          || (ptr_1_lo <  ptr_2_lo && ptr_1_hi >  ptr_2_hi)) {
+        if (   (ptr_1_lo >= ptr_2_lo && ptr_1_lo <= ptr_2_hi)
+            || (ptr_1_hi >= ptr_2_lo && ptr_1_hi <= ptr_2_hi)
+            || (ptr_1_lo <  ptr_2_lo && ptr_1_hi >  ptr_2_hi)) {
+          ARMCII_Dbg_print(DEBUG_CAT_IOV, "IOV regions overlap: [%p, %p] - [%p, %p]\n",
+              ptr_1_lo, ptr_1_hi, ptr_2_lo, ptr_2_hi);
+          return 1;
+        }
+      }
+    }
+
+  #else // NO_USE_CTREE
+
+    ctree_t ctree = CTREE_EMPTY;
+
+    if (!ARMCII_GLOBAL_STATE.iov_checks) return 0;
+
+    for (int i = 0; i < count; i++) {
+      int conflict = ctree_insert(&ctree, ptrs[i], ((uint8_t*)ptrs[i]) + size - 1);
+
+      if (conflict) {
+        ctree_t cnode = ctree_locate(ctree, ptrs[i], ((uint8_t*)ptrs[i]) + size - 1);
+
         ARMCII_Dbg_print(DEBUG_CAT_IOV, "IOV regions overlap: [%p, %p] - [%p, %p]\n",
-            ptr_1_lo, ptr_1_hi, ptr_2_lo, ptr_2_hi);
+            ptrs[i], ((uint8_t*)ptrs[i]) + size - 1, cnode->lo, cnode->hi);
+
+        ctree_destroy(&ctree);
         return 1;
       }
     }
-  }
-#else
-  int i;
-  ctree_t ctree = CTREE_EMPTY;
 
-  if (!ARMCII_GLOBAL_STATE.iov_checks) return 0;
+    ctree_destroy(&ctree);
 
-  for (i = 0; i < count; i++) {
-    int conflict = ctree_insert(&ctree, ptrs[i], ((uint8_t*)ptrs[i]) + size - 1);
-
-    if (conflict) {
-      ctree_t cnode = ctree_locate(ctree, ptrs[i], ((uint8_t*)ptrs[i]) + size - 1);
-
-      ARMCII_Dbg_print(DEBUG_CAT_IOV, "IOV regions overlap: [%p, %p] - [%p, %p]\n",
-          ptrs[i], ((uint8_t*)ptrs[i]) + size - 1, cnode->lo, cnode->hi);
-
-      ctree_destroy(&ctree);
-      return 1;
-    }
-  }
-
-  ctree_destroy(&ctree);
-#endif /* NO_USE_CTREE */
+  #endif /* NO_USE_CTREE */
 #endif /* NO_CHECK_OVERLAP */
 
   return 0;
@@ -78,8 +80,8 @@ int ARMCII_Iov_check_overlap(void **ptrs, int count, int size) {
   * @param[in] proc  Process on which the pointers are valid.
   * @return          Non-zero (true) on success, zero (false) otherwise.
   */
-int ARMCII_Iov_check_same_allocation(void **ptrs, int count, int proc) {
-  int i;
+int ARMCII_Iov_check_same_allocation(void **ptrs, int count, int proc)
+{
   gmr_t *mreg;
   void *base, *extent;
 
@@ -89,10 +91,11 @@ int ARMCII_Iov_check_same_allocation(void **ptrs, int count, int proc) {
 
   /* If local, all must be local */
   if (mreg == NULL) {
-    for (i = 1; i < count; i++) {
+    for (int i = 1; i < count; i++) {
       mreg = gmr_lookup(ptrs[i], proc);
-      if (mreg != NULL)
+      if (mreg != NULL) {
         return 0;
+      }
     }
   }
   /* If shared, all must fall in this region */
@@ -100,9 +103,11 @@ int ARMCII_Iov_check_same_allocation(void **ptrs, int count, int proc) {
     base   = mreg->slices[proc].base;
     extent = ((uint8_t*) base) + mreg->slices[proc].size;
 
-    for (i = 1; i < count; i++)
-      if ( !(ptrs[i] >= base && ptrs[i] < extent) )
+    for (int i = 1; i < count; i++) {
+      if ( !(ptrs[i] >= base && ptrs[i] < extent) ) {
         return 0;
+      }
+    }
   }
 
   return 1;
