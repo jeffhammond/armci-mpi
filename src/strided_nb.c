@@ -37,8 +37,9 @@
   * @return                    Zero on success, error code otherwise.
   */
 int PARMCI_NbPutS(void *src_ptr, int src_stride_ar[/*stride_levels*/],
-               void *dst_ptr, int dst_stride_ar[/*stride_levels*/], 
-               int count[/*stride_levels+1*/], int stride_levels, int proc, armci_hdl_t *handle) {
+                  void *dst_ptr, int dst_stride_ar[/*stride_levels*/], 
+                  int count[/*stride_levels+1*/], int stride_levels, int proc, armci_hdl_t *handle)
+{
 
   int err;
 
@@ -69,8 +70,9 @@ int PARMCI_NbPutS(void *src_ptr, int src_stride_ar[/*stride_levels*/],
       /* Jeff: WIN_UNIFIED should allow overlap to work but we
        *       do a memory barrier here to be safe. */
       gmr_loc = gmr_lookup(src_ptr, ARMCI_GROUP_WORLD.rank);
-      if (gmr_loc != NULL)
+      if (gmr_loc != NULL) {
           gmr_sync(gmr_loc);
+      }
     }
 
     /* NOGUARD: If src_buf hasn't been assigned to a copy, the strided source
@@ -147,9 +149,9 @@ int PARMCI_NbPutS(void *src_ptr, int src_stride_ar[/*stride_levels*/],
   * @return                    Zero on success, error code otherwise.
   */
 int PARMCI_NbGetS(void *src_ptr, int src_stride_ar[/*stride_levels*/],
-               void *dst_ptr, int dst_stride_ar[/*stride_levels*/], 
-               int count[/*stride_levels+1*/], int stride_levels, int proc, armci_hdl_t *handle) {
-
+                  void *dst_ptr, int dst_stride_ar[/*stride_levels*/], 
+                  int count[/*stride_levels+1*/], int stride_levels, int proc, armci_hdl_t *handle)
+{
   int err;
 
   if (ARMCII_GLOBAL_STATE.strided_method == ARMCII_STRIDED_DIRECT) {
@@ -177,8 +179,9 @@ int PARMCI_NbGetS(void *src_ptr, int src_stride_ar[/*stride_levels*/],
       /* Jeff: WIN_UNIFIED should allow overlap to work but we
        *       do a memory barrier here to be safe. */
       gmr_loc = gmr_lookup(dst_ptr, ARMCI_GROUP_WORLD.rank);
-      if (gmr_loc != NULL)
+      if (gmr_loc != NULL) {
           gmr_sync(gmr_loc);
+      }
     }
 
     /* NOGUARD: If dst_buf hasn't been assigned to a copy, the strided source
@@ -258,10 +261,10 @@ int PARMCI_NbGetS(void *src_ptr, int src_stride_ar[/*stride_levels*/],
   * @return                    Zero on success, error code otherwise.
   */
 int PARMCI_NbAccS(int datatype, void *scale,
-               void *src_ptr, int src_stride_ar[/*stride_levels*/],
-               void *dst_ptr, int dst_stride_ar[/*stride_levels*/],
-               int count[/*stride_levels+1*/], int stride_levels, int proc, armci_hdl_t *handle) {
-
+                  void *src_ptr, int src_stride_ar[/*stride_levels*/],
+                  void *dst_ptr, int dst_stride_ar[/*stride_levels*/],
+                  int count[/*stride_levels+1*/], int stride_levels, int proc, armci_hdl_t *handle)
+{
   int err;
 
   if (ARMCII_GLOBAL_STATE.strided_method == ARMCII_STRIDED_DIRECT) {
@@ -290,8 +293,9 @@ int PARMCI_NbAccS(int datatype, void *scale,
       /* Shoehorn the strided information into an IOV */
       ARMCII_Strided_to_iov(&iov, src_ptr, src_stride_ar, src_ptr, src_stride_ar, count, stride_levels);
 
-      for (i = 0; i < iov.ptr_array_len; i++)
+      for (i = 0; i < iov.ptr_array_len; i++) {
         ARMCII_Buf_acc_scale(iov.src_ptr_array[i], ((uint8_t*)src_buf) + i*iov.bytes, iov.bytes, datatype, scale);
+      }
 
       free(iov.src_ptr_array);
       free(iov.dst_ptr_array);
@@ -321,8 +325,9 @@ int PARMCI_NbAccS(int datatype, void *scale,
       /* Jeff: WIN_UNIFIED should allow overlap to work but we
        *       do a memory barrier here to be safe. */
       gmr_loc = gmr_lookup(src_ptr, ARMCI_GROUP_WORLD.rank);
-      if (gmr_loc != NULL)
+      if (gmr_loc != NULL) {
           gmr_sync(gmr_loc);
+      }
     }
 
     /* NOGUARD: If src_buf hasn't been assigned to a copy, the strided source
