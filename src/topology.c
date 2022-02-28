@@ -9,6 +9,8 @@
 #include <armci_internals.h>
 #include <debug.h>
 
+#if ARMCI_DOMAINS
+
 /** NOTE: Domains are not implemented.  These dummy wrappers assume that all
   * domains are of size 1. */
 
@@ -52,6 +54,7 @@ int armci_domain_same_id(armci_domain_t domain, int glob_proc_id) {
   return glob_proc_id == ARMCI_GROUP_WORLD.rank;
 }
 
+#endif
 
 /** Query if a process is on the same node as the caller.
   *
