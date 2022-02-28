@@ -26,18 +26,19 @@ void ARMCII_Strided_to_dtype(int stride_array[/*stride_levels*/], int count[/*st
   int sizes   [stride_levels+1];
   int subsizes[stride_levels+1];
   int starts  [stride_levels+1];
-  int i, old_type_size;
+  int old_type_size;
 
   MPI_Type_size(old_type, &old_type_size);
 
   /* Eliminate counts that don't count (all 1 counts at the end) */
-  for (i = stride_levels+1; (i > 0) && (stride_levels > 0) && (count[i-1] == 1); i--)
+  for (int i = stride_levels+1; (i > 0) && (stride_levels > 0) && (count[i-1] == 1); i--) {
     stride_levels--;
+  }
 
   /* A correct strided spec should me monotonic increasing and stride_array[i+1] should
      be a multiple of stride_array[i]. */
   if (stride_levels > 0) {
-    for (i = 1; i < stride_levels; i++) {
+    for (int i = 1; i < stride_levels; i++) {
       ARMCII_Assert(stride_array[i] >= stride_array[i-1]);
       /* This assertion is violated by what seems to be valid usage resulting from
        * the new GA API call nga_strided_get during the stride test in GA 5.2.
@@ -56,8 +57,9 @@ void ARMCII_Strided_to_dtype(int stride_array[/*stride_levels*/], int count[/*st
   /* Transfer is non-contiguous */
   else {
 
-    for (i = 0; i < stride_levels+1; i++)
+    for (int i = 0; i < stride_levels+1; i++) {
       starts[i] = 0;
+    }
 
     sizes   [stride_levels] = stride_array[0]/old_type_size;
     subsizes[stride_levels] = count[0]/old_type_size;
@@ -65,7 +67,7 @@ void ARMCII_Strided_to_dtype(int stride_array[/*stride_levels*/], int count[/*st
     ARMCII_Assert((stride_array[0] % old_type_size) == 0);
     ARMCII_Assert((count[0] % old_type_size) == 0);
 
-    for (i = 1; i < stride_levels; i++) {
+    for (int i = 1; i < stride_levels; i++) {
       /* Convert strides into dimensions by dividing out contributions from lower dims */
       sizes   [stride_levels-i] = stride_array[i]/stride_array[i-1];
       subsizes[stride_levels-i] = count[i];
@@ -125,8 +127,9 @@ int PARMCI_PutS(void *src_ptr, int src_stride_ar[/*stride_levels*/],
       if (gmr_loc != NULL) {
         int i, size;
 
-        for (i = 1, size = count[0]; i < stride_levels+1; i++)
+        for (i = 1, size = count[0]; i < stride_levels+1; i++) {
           size *= count[i];
+        }
 
         MPI_Alloc_mem(size, MPI_INFO_NULL, &src_buf);
         ARMCII_Assert(src_buf != NULL);
@@ -228,8 +231,9 @@ int PARMCI_GetS(void *src_ptr, int src_stride_ar[/*stride_levels*/],
       if (gmr_loc != NULL) {
         int i, size;
 
-        for (i = 1, size = count[0]; i < stride_levels+1; i++)
+        for (i = 1, size = count[0]; i < stride_levels+1; i++) {
           size *= count[i];
+        }
 
         MPI_Alloc_mem(size, MPI_INFO_NULL, &dst_buf);
         ARMCII_Assert(dst_buf != NULL);
@@ -336,11 +340,13 @@ int PARMCI_AccS(int datatype, void *scale,
       armci_giov_t iov;
       int i, nelem;
 
-      if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD)
+      if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
         gmr_loc = gmr_lookup(src_ptr, ARMCI_GROUP_WORLD.rank);
+      }
 
-      for (i = 1, nelem = count[0]/mpi_datatype_size; i < stride_levels+1; i++)
+      for (i = 1, nelem = count[0]/mpi_datatype_size; i < stride_levels+1; i++) {
         nelem *= count[i];
+      }
 
       MPI_Alloc_mem(nelem*mpi_datatype_size, MPI_INFO_NULL, &src_buf);
       ARMCII_Assert(src_buf != NULL);
@@ -348,8 +354,9 @@ int PARMCI_AccS(int datatype, void *scale,
       /* Shoehorn the strided information into an IOV */
       ARMCII_Strided_to_iov(&iov, src_ptr, src_stride_ar, src_ptr, src_stride_ar, count, stride_levels);
 
-      for (i = 0; i < iov.ptr_array_len; i++)
+      for (int i = 0; i < iov.ptr_array_len; i++) {
         ARMCII_Buf_acc_scale(iov.src_ptr_array[i], ((uint8_t*)src_buf) + i*iov.bytes, iov.bytes, datatype, scale);
+      }
 
       free(iov.src_ptr_array);
       free(iov.dst_ptr_array);
@@ -444,15 +451,14 @@ int PARMCI_AccS(int datatype, void *scale,
 void ARMCII_Strided_to_iov(armci_giov_t *iov,
                void *src_ptr, int src_stride_ar[/*stride_levels*/],
                void *dst_ptr, int dst_stride_ar[/*stride_levels*/], 
-               int count[/*stride_levels+1*/], int stride_levels) {
-
-  int i;
-
+               int count[/*stride_levels+1*/], int stride_levels)
+{
   iov->bytes = count[0];
   iov->ptr_array_len = 1;
 
-  for (i = 0; i < stride_levels; i++)
+  for (int i = 0; i < stride_levels; i++) {
     iov->ptr_array_len *= count[i+1];
+  }
 
   iov->src_ptr_array = malloc(iov->ptr_array_len*sizeof(void*));
   iov->dst_ptr_array = malloc(iov->ptr_array_len*sizeof(void*));
@@ -469,8 +475,9 @@ void ARMCII_Strided_to_iov(armci_giov_t *iov,
     int idx[stride_levels];
     int xfer;
 
-    for (i = 0; i < stride_levels; i++)
+    for (int i = 0; i < stride_levels; i++) {
       idx[i] = 0;
+    }
 
     for (xfer = 0; idx[stride_levels-1] < count[stride_levels]; xfer++) {
       int disp_src = 0;
@@ -479,7 +486,7 @@ void ARMCII_Strided_to_iov(armci_giov_t *iov,
       ARMCII_Assert(xfer < iov->ptr_array_len);
 
       // Calculate displacements from base pointers
-      for (i = 0; i < stride_levels; i++) {
+      for (int i = 0; i < stride_levels; i++) {
         disp_src += src_stride_ar[i]*idx[i];
         disp_dst += dst_stride_ar[i]*idx[i];
       }
@@ -493,7 +500,7 @@ void ARMCII_Strided_to_iov(armci_giov_t *iov,
 
       // Propagate "carry" overflows outward.  We're done when the outermost
       // index is greater than the requested count.
-      for (i = 0; i < stride_levels-1; i++) {
+      for (int i = 0; i < stride_levels-1; i++) {
         if (idx[i] >= count[i+1]) {
           idx[i]    = 0;
           idx[i+1] += 1;
@@ -521,9 +528,9 @@ void ARMCII_Strided_to_iov(armci_giov_t *iov,
 armcii_iov_iter_t *ARMCII_Strided_to_iov_iter(
                void *src_ptr, int src_stride_ar[/*stride_levels*/],
                void *dst_ptr, int dst_stride_ar[/*stride_levels*/], 
-               int count[/*stride_levels+1*/], int stride_levels) {
+               int count[/*stride_levels+1*/], int stride_levels)
+{
 
-  int i;
   armcii_iov_iter_t *it = malloc(sizeof(armcii_iov_iter_t));
 
   ARMCII_Assert(it != NULL);
@@ -541,7 +548,7 @@ armcii_iov_iter_t *ARMCII_Strided_to_iov_iter(
   it->count         = &it->base_ptr[2*stride_levels];
   it->idx           = &it->base_ptr[3*stride_levels+1];
 
-  for (i = 0; i < stride_levels; i++) {
+  for (int i = 0; i < stride_levels; i++) {
     it->src_stride_ar[i] = src_stride_ar[i];
     it->dst_stride_ar[i] = dst_stride_ar[i];
     it->count[i]         = count[i];
@@ -597,10 +604,10 @@ int ARMCII_Iov_iter_next(armcii_iov_iter_t *it, void **src, void **dst) {
 
   // Case 2: Strided transfer
   } else {
-    int i, disp_src = 0, disp_dst = 0;
+    int disp_src = 0, disp_dst = 0;
 
     // Calculate displacements from base pointers
-    for (i = 0; i < it->stride_levels; i++) {
+    for (int i = 0; i < it->stride_levels; i++) {
       disp_src += it->src_stride_ar[i]*it->idx[i];
       disp_dst += it->dst_stride_ar[i]*it->idx[i];
     }
@@ -614,7 +621,7 @@ int ARMCII_Iov_iter_next(armcii_iov_iter_t *it, void **src, void **dst) {
 
     // Propagate "carry" overflows outward.  We're done when the outermost
     // index is greater than the requested count.
-    for (i = 0; i < it->stride_levels-1; i++) {
+    for (int i = 0; i < it->stride_levels-1; i++) {
       if (it->idx[i] >= it->count[i+1]) {
         it->idx[i]    = 0;
         it->idx[i+1] += 1;
@@ -680,13 +687,13 @@ int PARMCI_PutS_flag(void *src_ptr, int src_stride_ar[/*stride_levels*/],
 void armci_write_strided(void *src, int stride_levels, int src_stride_arr[],
                          int count[], char *dst) {
   armci_giov_t iov;
-  int i;
 
   // Shoehorn the strided information into an IOV
   ARMCII_Strided_to_iov(&iov, src, src_stride_arr, src, src_stride_arr, count, stride_levels);
 
-  for (i = 0; i < iov.ptr_array_len; i++)
+  for (int i = 0; i < iov.ptr_array_len; i++) {
     ARMCI_Copy(iov.src_ptr_array[i], dst + i*count[0], iov.bytes);
+  }
 
   free(iov.src_ptr_array);
   free(iov.dst_ptr_array);
@@ -705,13 +712,13 @@ void armci_write_strided(void *src, int stride_levels, int src_stride_arr[],
 void armci_read_strided(void *dst, int stride_levels, int dst_stride_arr[],
                         int count[], char *src) {
   armci_giov_t iov;
-  int i;
 
   // Shoehorn the strided information into an IOV
   ARMCII_Strided_to_iov(&iov, dst, dst_stride_arr, dst, dst_stride_arr, count, stride_levels);
 
-  for (i = 0; i < iov.ptr_array_len; i++)
+  for (int i = 0; i < iov.ptr_array_len; i++) {
     ARMCI_Copy(src + i*count[0], iov.dst_ptr_array[i], iov.bytes);
+  }
 
   free(iov.src_ptr_array);
   free(iov.dst_ptr_array);
