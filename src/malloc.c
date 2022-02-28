@@ -30,7 +30,8 @@
   *                       segment.
   * @param[in]       size Number of bytes to allocate on the local process.
   */
-int PARMCI_Malloc(void **ptr_arr, armci_size_t bytes) {
+int PARMCI_Malloc(void **ptr_arr, armci_size_t bytes)
+{
   return ARMCI_Malloc_group(ptr_arr, bytes, &ARMCI_GROUP_WORLD);
 }
 
@@ -49,7 +50,8 @@ int PARMCI_Malloc(void **ptr_arr, armci_size_t bytes) {
   *
   * @param[in] ptr Pointer to the local patch of the allocation
   */
-int PARMCI_Free(void *ptr) {
+int PARMCI_Free(void *ptr)
+{
   return ARMCI_Free_group(ptr, &ARMCI_GROUP_WORLD);
 }
 
@@ -61,8 +63,8 @@ int PARMCI_Free(void *ptr) {
   *                       equal to the number of processes in the group.
   * @param[in]       size Number of bytes to allocate on the local process.
   */
-int ARMCI_Malloc_group(void **base_ptrs, armci_size_t size, ARMCI_Group *group) {
-  int i;
+int ARMCI_Malloc_group(void **base_ptrs, armci_size_t size, ARMCI_Group *group)
+{
   gmr_t *mreg;
 
   ARMCII_Assert(PARMCI_Initialized());
@@ -77,9 +79,10 @@ int ARMCI_Malloc_group(void **base_ptrs, armci_size_t size, ARMCI_Group *group) 
     if (mreg == NULL) {
       strncpy(ptr_string, "NULL", 5);
     } else {
-      for (i = 0; i < mreg->nslices && count < BUF_LEN; i++)
+      for (int i = 0; i < mreg->nslices && count < BUF_LEN; i++) {
         count += snprintf(ptr_string+count, BUF_LEN-count, 
             (i == mreg->nslices-1) ? "%p" : "%p ", base_ptrs[i]);
+      }
     }
 
     ARMCII_Dbg_print(DEBUG_CAT_ALLOC, "base ptrs [%s]\n", ptr_string);
@@ -94,7 +97,8 @@ int ARMCI_Malloc_group(void **base_ptrs, armci_size_t size, ARMCI_Group *group) 
   *
   * @param[in] ptr Pointer to the local patch of the allocation
   */
-int ARMCI_Free_group(void *ptr, ARMCI_Group *group) {
+int ARMCI_Free_group(void *ptr, ARMCI_Group *group)
+{
   gmr_t *mreg;
 
   if (ptr != NULL) {
@@ -125,7 +129,8 @@ int ARMCI_Free_group(void *ptr, ARMCI_Group *group) {
   * @param[in] size Number of bytes to allocate
   * @return         Pointer to the local buffer
   */
-void *PARMCI_Malloc_local(armci_size_t size) {
+void *PARMCI_Malloc_local(armci_size_t size)
+{
   void *buf;
 
   MPI_Alloc_mem((MPI_Aint) size, MPI_INFO_NULL, &buf);
@@ -152,7 +157,8 @@ void *PARMCI_Malloc_local(armci_size_t size) {
   *
   * @param[in] buf Pointer to local buffer to free
   */
-int PARMCI_Free_local(void *buf) {
+int PARMCI_Free_local(void *buf)
+{
   MPI_Free_mem(buf);
   return 0;
 }

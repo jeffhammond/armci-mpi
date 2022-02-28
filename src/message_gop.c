@@ -22,10 +22,9 @@ MPI_Op ARMCI_MPI_ABSMAX_OP;
 
 #define ABSMIN(IN,INOUT,COUNT,DTYPE,ABSOP)      \
       do {                                      \
-        int i;                                  \
         DTYPE *in = (DTYPE *)IN;                \
         DTYPE *io = (DTYPE *)INOUT;             \
-        for (i = 0; i < COUNT; i++) {           \
+        for (int i = 0; i < COUNT; i++) {       \
           const DTYPE x = ABSOP(in[i]);         \
           const DTYPE y = ABSOP(io[i]);         \
           io[i] = MIN(x,y);                     \
@@ -58,10 +57,9 @@ void ARMCII_Absmin_op(void *invec, void *inoutvec, int *len, MPI_Datatype *datat
 
 #define ABSMAX(IN,INOUT,COUNT,DTYPE,ABSOP)      \
       do {                                      \
-        int i;                                  \
         DTYPE *in = (DTYPE *)IN;                \
         DTYPE *io = (DTYPE *)INOUT;             \
-        for (i = 0; i < COUNT; i++) {           \
+        for (int i = 0; i < COUNT; i++) {       \
           const DTYPE x = ABSOP(in[i]);         \
           const DTYPE y = ABSOP(io[i]);         \
           io[i] = MAX(x,y);                     \
@@ -94,11 +92,11 @@ void ARMCII_Absmax_op(void *invec, void *inoutvec, int *len, MPI_Datatype *datat
 
 #define ABSV(IN,INOUT,COUNT,DTYPE,ABSOP)        \
       do {                                      \
-        int i;                                  \
         DTYPE *in = (DTYPE *)IN;                \
         DTYPE *io = (DTYPE *)INOUT;             \
-        for (i = 0; i < COUNT; i++)             \
+        for (int i = 0; i < COUNT; i++) {       \
           io[i] = ABSOP(in[i]);                 \
+        }                                       \
       } while (0)
 
 /** Compute the absolute value.
