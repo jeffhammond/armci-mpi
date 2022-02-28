@@ -16,7 +16,8 @@
 /** Fatal error, print the message and abort the program with the provided
   * error code.
   */
-void ARMCI_Error(const char *msg, int code) {
+void ARMCI_Error(const char *msg, int code)
+{
   fprintf(stderr, "[%d] ARMCI Error: %s\n", ARMCI_GROUP_WORLD.rank, msg);
   fflush(NULL);
   MPI_Abort(ARMCI_GROUP_WORLD.comm, code);
@@ -36,7 +37,8 @@ void ARMCI_Error(const char *msg, int code) {
 /** Barrier synchronization.  Collective on the world group (not the default
   * group!).
   */
-void PARMCI_Barrier(void) {
+void PARMCI_Barrier(void)
+{
   gmr_t *cur_mreg = gmr_list;
 
   PARMCI_AllFence();
@@ -64,7 +66,8 @@ void PARMCI_Barrier(void) {
   *
   * @param[in] proc Process to target
   */
-void PARMCI_Fence(int proc) {
+void PARMCI_Fence(int proc)
+{
   gmr_t *cur_mreg = gmr_list;
 
   while (cur_mreg) {
@@ -88,7 +91,8 @@ void PARMCI_Fence(int proc) {
 /** Wait for remote completion on all one-sided operations.  In MPI-2, this is
   * a no-op since get/put/acc already guarantee remote completion.
   */
-void PARMCI_AllFence(void) {
+void PARMCI_AllFence(void)
+{
   gmr_t *cur_mreg = gmr_list;
 
   while (cur_mreg) {
@@ -108,7 +112,8 @@ int ARMCI_Uses_shm(void) {
   *
   * A limit of 0 specifies no limit.
   */
-void ARMCI_Set_shm_limit(unsigned long shmemlimit) {
+void ARMCI_Set_shm_limit(unsigned long shmemlimit)
+{
   if (shmemlimit < SIZE_MAX) {
       ARMCII_GLOBAL_STATE.memory_limit = (size_t)shmemlimit;
   } else {
@@ -117,11 +122,10 @@ void ARMCI_Set_shm_limit(unsigned long shmemlimit) {
   }
 }
 
-
-int ARMCI_Uses_shm_grp(ARMCI_Group *group) {
+int ARMCI_Uses_shm_grp(ARMCI_Group *group)
+{
   return 0;
 }
-
 
 /** Copy local data.
   *
@@ -129,20 +133,22 @@ int ARMCI_Uses_shm_grp(ARMCI_Group *group) {
   * @param[out] dst  Destination buffer
   * @param[in]  size Number of bytes to copy
   */
-void ARMCI_Copy(void *src, void *dst, int size) {
+void ARMCI_Copy(void *src, void *dst, int size)
+{
   memmove(dst, src, size);
 }
 
-
 /** Zero out the given buffer.
   */
-void ARMCII_Bzero(void *buf, armci_size_t size) {
+void ARMCII_Bzero(void *buf, armci_size_t size)
+{
   memset(buf, 0, (size_t)size);
 }
 
 /** Retrieve the value of a boolean environment variable.
   */
-int ARMCII_Getenv_bool(const char *varname, int default_value) {
+int ARMCII_Getenv_bool(const char *varname, int default_value)
+{
   const char *var = getenv(varname);
 
   if (var == NULL) {
@@ -158,14 +164,16 @@ int ARMCII_Getenv_bool(const char *varname, int default_value) {
 
 /** Retrieve the value of a environment variable.
   */
-char *ARMCII_Getenv(const char *varname) {
+char *ARMCII_Getenv(const char *varname)
+{
   return getenv(varname);
 }
 
 
 /** Retrieve the value of an integer environment variable.
   */
-int ARMCII_Getenv_int(const char *varname, int default_value) {
+int ARMCII_Getenv_int(const char *varname, int default_value)
+{
   const char *var = getenv(varname);
   if (var) {
     return atoi(var);
@@ -176,7 +184,8 @@ int ARMCII_Getenv_int(const char *varname, int default_value) {
 
 /** Retrieve the value of a long integer environment variable.
   */
-long ARMCII_Getenv_long(const char *varname, long default_value) {
+long ARMCII_Getenv_long(const char *varname, long default_value)
+{
   const char *var = getenv(varname);
   if (var) {
     return atol(var);
