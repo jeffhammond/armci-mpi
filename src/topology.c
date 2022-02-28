@@ -20,18 +20,22 @@
   * @param[in] domain_id Domain id or -1 for my domain.
   */
 int armci_domain_nprocs(armci_domain_t domain, int domain_id) {
+  (void)domain;
+  (void)domain_id;
   return 1;
 }
 
 /** Query which domain a process belongs to.
   */
 int armci_domain_id(armci_domain_t domain, int glob_proc_id) {
+  (void)domain;
   return glob_proc_id;
 }
 
 /** Translate a domain process ID to a global process ID.
   */
 int armci_domain_glob_proc_id(armci_domain_t domain, int domain_id, int loc_proc_id) {
+  (void)domain;
   ARMCII_Assert(loc_proc_id == 0); // Groups must be size 1
   return domain_id;
 }
@@ -39,18 +43,21 @@ int armci_domain_glob_proc_id(armci_domain_t domain, int domain_id, int loc_proc
 /** Query the ID of my domain.
   */
 int armci_domain_my_id(armci_domain_t domain) {
+  (void)domain;
   return ARMCI_GROUP_WORLD.rank;
 }
 
 /** Query the number of domains.
   */
 int armci_domain_count(armci_domain_t domain) {
+  (void)domain;
   return ARMCI_GROUP_WORLD.size;
 }
 
 /** Query if the given process shared a domain with me.
   */
 int armci_domain_same_id(armci_domain_t domain, int glob_proc_id) {
+  (void)domain;
   return glob_proc_id == ARMCI_GROUP_WORLD.rank;
 }
 
