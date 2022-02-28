@@ -178,13 +178,15 @@ int ARMCII_Iov_op_dispatch(enum ARMCII_Op_e op, void **src, void **dst, int coun
 #if 0
 /** Safe implementation of the ARMCI IOV operation
   */
-int ARMCII_Iov_op_safe(enum ARMCII_Op_e op, void **src, void **dst, int count, int elem_count,
-    MPI_Datatype type, int proc) {
+int ARMCII_Iov_op_safe(enum ARMCII_Op_e op,
+                       void **src, void **dst,
+                       int count, int elem_count,
+                       MPI_Datatype type, int proc)
+{
 
-  int i;
   int flush_local = 0; /* used only for MPI-3 */
 
-  for (i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
     gmr_t *mreg;
     void *shr_ptr;
 
@@ -232,10 +234,12 @@ int ARMCII_Iov_op_safe(enum ARMCII_Op_e op, void **src, void **dst, int count, i
 /** Optimized implementation of the ARMCI IOV operation that uses a single
   * lock/unlock pair.
   */
-int ARMCII_Iov_op_batched(enum ARMCII_Op_e op, void **src, void **dst, int count, int elem_count,
-    MPI_Datatype type, int proc, int consrv, int blocking) {
-
-  int i;
+int ARMCII_Iov_op_batched(enum ARMCII_Op_e op,
+                          void **src, void **dst,
+                          int count, int elem_count,
+                          MPI_Datatype type,
+                          int proc, int consrv, int blocking)
+{
   int flush_local = 1; /* used only for MPI-3 */
   gmr_t *mreg;
   void *shr_ptr;
@@ -256,9 +260,9 @@ int ARMCII_Iov_op_batched(enum ARMCII_Op_e op, void **src, void **dst, int count
   mreg = gmr_lookup(shr_ptr, proc);
   ARMCII_Assert_msg(mreg != NULL, "Invalid remote pointer");
 
-  for (i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
 
-    if ( blocking && i > 0 &&
+    if ( blocking && (i > 0) &&
         ( consrv ||
          ( ARMCII_GLOBAL_STATE.iov_batched_limit > 0 && i % ARMCII_GLOBAL_STATE.iov_batched_limit == 0)
         )
@@ -297,16 +301,19 @@ int ARMCII_Iov_op_batched(enum ARMCII_Op_e op, void **src, void **dst, int count
 /** Optimized implementation of the ARMCI IOV operation that uses an MPI
   * datatype to achieve a one-sided gather/scatter.
   */
-int ARMCII_Iov_op_datatype(enum ARMCII_Op_e op, void **src, void **dst, int count, int elem_count,
-    MPI_Datatype type, int proc, int blocking) {
-
+int ARMCII_Iov_op_datatype(enum ARMCII_Op_e op,
+                           void **src, void **dst,
+                           int count, int elem_count,
+                           MPI_Datatype type,
+                           int proc, int blocking)
+{
     gmr_t *mreg;
     MPI_Datatype  type_loc, type_rem;
     MPI_Aint      disp_loc[count];
     int           disp_rem[count];
     int           block_len[count];
     void         *dst_win_base;
-    int           dst_win_size, i, type_size;
+    int           dst_win_size, type_size;
     void        **buf_rem, **buf_loc;
     MPI_Aint      base_rem;
     int flush_local = 0; /* used only for MPI-3 */
@@ -336,7 +343,7 @@ int ARMCII_Iov_op_datatype(enum ARMCII_Op_e op, void **src, void **dst, int coun
 
     MPI_Get_address(dst_win_base, &base_rem);
 
-    for (i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
       MPI_Aint target_rem;
       MPI_Get_address(buf_loc[i], &disp_loc[i]);
       MPI_Get_address(buf_rem[i], &target_rem);
@@ -403,10 +410,9 @@ int ARMCII_Iov_op_datatype(enum ARMCII_Op_e op, void **src, void **dst, int coun
   * @param[in] proc     Target process.
   * @return             Success 0, otherwise non-zero.
   */
-int PARMCI_PutV(armci_giov_t *iov, int iov_len, int proc) {
-  int v;
-
-  for (v = 0; v < iov_len; v++) {
+int PARMCI_PutV(armci_giov_t *iov, int iov_len, int proc)
+{
+  for (int v = 0; v < iov_len; v++) {
     void **src_buf;
     int    overlapping, same_alloc;
 
@@ -443,10 +449,9 @@ int PARMCI_PutV(armci_giov_t *iov, int iov_len, int proc) {
   * @param[in] proc     Target process.
   * @return             Success 0, otherwise non-zero.
   */
-int PARMCI_GetV(armci_giov_t *iov, int iov_len, int proc) {
-  int v;
-
-  for (v = 0; v < iov_len; v++) {
+int PARMCI_GetV(armci_giov_t *iov, int iov_len, int proc)
+{
+  for (int v = 0; v < iov_len; v++) {
     void **dst_buf;
     int    overlapping, same_alloc;
 
@@ -484,10 +489,9 @@ int PARMCI_GetV(armci_giov_t *iov, int iov_len, int proc) {
   * @param[in] proc     Target process.
   * @return             Success 0, otherwise non-zero.
   */
-int PARMCI_AccV(int datatype, void *scale, armci_giov_t *iov, int iov_len, int proc) {
-  int v;
-
-  for (v = 0; v < iov_len; v++) {
+int PARMCI_AccV(int datatype, void *scale, armci_giov_t *iov, int iov_len, int proc)
+{
+  for (int v = 0; v < iov_len; v++) {
     void **src_buf;
     int    overlapping, same_alloc;
 
