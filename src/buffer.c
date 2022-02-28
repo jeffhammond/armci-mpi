@@ -71,6 +71,7 @@ int ARMCII_Buf_prepare_read_vec(void **orig_bufs, void ***new_bufs_ptr, int coun
   * @param[in]  size      The size of the buffers (all are of the same size).
   */
 void ARMCII_Buf_finish_read_vec(void **orig_bufs, void **new_bufs, int count, int size) {
+  (void)size; // silence compiler warning
   if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
     int i;
 
@@ -155,6 +156,7 @@ int ARMCII_Buf_prepare_acc_vec(void **orig_bufs, void ***new_bufs_ptr, int count
   * @param[in]  size      The size of the buffers (all are of the same size).
   */
 void ARMCII_Buf_finish_acc_vec(void **orig_bufs, void **new_bufs, int count, int size) {
+  (void)size; // silence compiler warning
   int i;
 
   for (i = 0; i < count; i++) {
