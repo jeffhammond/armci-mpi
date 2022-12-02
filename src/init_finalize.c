@@ -79,13 +79,15 @@ static void ARMCII_Parse_library_version(char * library_version, enum ARMCII_MPI
     *major = -1;
     *minor = -1;
 
-    int is_mpich = 0, is_ompi = 0;
+    int is_mpich = 0, is_ompi = 0, is_impi = 0;
     {
         char * p = NULL;
         p = strstr(library_version,"MPICH");
         is_mpich = (p != NULL);
         p = strstr(library_version,"Open MPI");
         is_ompi = (p != NULL);
+        p = strstr(library_version,"Intel(R) MPI Library");
+        is_impi = (p != NULL);
     }
 
     if (is_mpich) {
@@ -138,6 +140,28 @@ static void ARMCII_Parse_library_version(char * library_version, enum ARMCII_MPI
       *major = ompi_major;
       *minor = ompi_minor;
       strncpy(patch, ompi_patch, sizeof(ompi_patch));
+    }
+
+    if (is_impi) {
+      *impl = ARMCII_INTEL_MPI;
+      int impi_major = 0;
+      int impi_minor = 0;
+      char impi_patch[6] = {0}; /* ".PrcX" is max since major=2+ */
+      for (int major = 2030; major >= 2000; major--) {
+        for (int minor = 30; minor >= 0; minor--) {
+          char version_string[7] = {0};
+          sprintf(version_string,"%d.%d",major,minor);
+          char * p = strstr(library_version,version_string);
+          if (p != NULL) {
+            impi_major = atoi(p);
+            impi_minor = atoi(p+5);
+            break;
+          }
+        }
+      }
+      *major = impi_major;
+      *minor = impi_minor;
+      *patch = '\0';
     }
 }
 
@@ -433,6 +457,9 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
         else if (mpi_implementation == ARMCII_MPICH) {
           printf("  MPICH version          = %d.%d%s\n", mpi_impl_major, mpi_impl_minor, mpi_impl_patch);
         }
+        else if (mpi_implementation == ARMCII_INTEL_MPI) {
+          printf("  Intel MPI version      = %d.%d%s\n", mpi_impl_major, mpi_impl_minor, mpi_impl_patch);
+        }
         else if (mpi_implementation == ARMCII_UNKNOWN_MPI) {
           printf("  Unknown MPI version    = %s\n", mpi_library_version);
         }
@@ -588,6 +615,27 @@ int PARMCI_Init_thread(int armci_requested) {
 
 /* -- begin weak symbols block -- */
 #if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Init_mpi_comm = PARMCI_Init_mpi_comm
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Init_mpi_comm ARMCI_Init_mpi_comm
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Init_mpi_comm as PARMCI_Init_mpi_comm
+#endif
+/* -- end weak symbols block -- */
+
+/** Initialize ARMCI.  MPI must be initialized before this can be called.  It
+  * is invalid to make ARMCI calls before initialization.  Collective on the
+  * world group.
+  *
+  * @return            Zero on success
+  */
+int PARMCI_Init_mpi_comm(MPI_Comm comm) {
+  return PARMCI_Init_thread_comm(MPI_THREAD_SINGLE, comm);
+}
+
+
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
 #  pragma weak ARMCI_Init_args = PARMCI_Init_args
 #elif defined(HAVE_PRAGMA_HP_SEC_DEF)
 #  pragma _HP_SECONDARY_DEF PARMCI_Init_args ARMCI_Init_args
@@ -605,7 +653,7 @@ int PARMCI_Init_thread(int armci_requested) {
   * @return            Zero on success
   */
 int PARMCI_Init_args(int *argc, char ***argv) {
-  return PARMCI_Init_thread(MPI_THREAD_SINGLE);
+  return PARMCI_Init_thread_comm(MPI_THREAD_SINGLE, MPI_COMM_WORLD);
 }
 
 
@@ -626,7 +674,7 @@ int PARMCI_Init_args(int *argc, char ***argv) {
   * @return            Zero on success
   */
 int PARMCI_Init(void) {
-  return PARMCI_Init_thread(MPI_THREAD_SINGLE);
+  return PARMCI_Init_thread_comm(MPI_THREAD_SINGLE, MPI_COMM_WORLD);
 }
 
 
