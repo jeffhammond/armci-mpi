@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <sys/time.h>
+#include <time.h>
 #include <string.h>
 #include <assert.h>
 
@@ -301,7 +302,7 @@ double * benchmark(int op, int msg_size, int size2)
                     time_after_start = MP_TIMER();
 
                     ARMCI_ASSERT(ARMCI_NbGetS(array_ptrs[second], &stride_dist,
-                                array_ptrs[second], &stride_dist,
+                                array_ptrs[rank], &stride_dist,
                                 block_sizes, 1, second, &handle));
                     time_after_call = MP_TIMER();
 

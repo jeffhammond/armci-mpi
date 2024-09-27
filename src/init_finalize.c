@@ -64,6 +64,107 @@ static void * progress_function(void * arg)
 #endif /* HAVE_PTHREADS */
 #endif /* ENABLE_PROGRESS */
 
+/* Some of these are preprocessor symbols without the namespace... */
+enum ARMCII_MPI_Impl_e { ARMCII_MPICH,
+                         ARMCII_OPEN_MPI,
+                         ARMCII_MVAPICH2,
+                         ARMCII_INTEL_MPI,
+                         ARMCII_CRAY_MPI,
+                         ARMCII_UNKNOWN_MPI };
+
+static void ARMCII_Parse_library_version(char * library_version, enum ARMCII_MPI_Impl_e * impl,
+                                         int * major, int * minor, char * patch)
+{
+    *impl  = ARMCII_UNKNOWN_MPI;
+    *major = -1;
+    *minor = -1;
+
+    int is_mpich = 0, is_ompi = 0, is_impi = 0;
+    {
+        char * p = NULL;
+        p = strstr(library_version,"MPICH");
+        is_mpich = (p != NULL);
+        p = strstr(library_version,"Open MPI");
+        is_ompi = (p != NULL);
+        p = strstr(library_version,"Intel(R) MPI Library");
+        is_impi = (p != NULL);
+    }
+
+    if (is_mpich) {
+      *impl = ARMCII_MPICH;
+      int mpich_major = 0;
+      int mpich_minor = 0;
+      char mpich_patch[4] = {0};
+      for (int major = 9; major >= 3; major--) {
+        for (int minor = 9; minor >= 0; minor--) {
+          char version_string[4] = {0};
+          sprintf(version_string,"%d.%d",major,minor);
+          char * p = strstr(library_version,version_string);
+          if (p != NULL) {
+            mpich_major = atoi(p);
+            mpich_minor = atoi(p+2);
+            strncpy(mpich_patch,p+3,4);
+            break;
+          }
+        }
+      }
+      *major = mpich_major;
+      *minor = mpich_minor;
+      strncpy(patch, mpich_patch, sizeof(mpich_patch));
+    }
+
+    if (is_ompi) {
+      *impl = ARMCII_OPEN_MPI;
+      int ompi_major = 0;
+      int ompi_minor = 0;
+      char ompi_patch[6] = {0}; /* ".PrcX" is max since major=2+ */
+      for (int major = 9; major >= 2; major--) {
+        for (int minor = 9; minor >= 0; minor--) {
+          char version_string[4] = {0};
+          sprintf(version_string,"%d.%d",major,minor);
+          char * p = strstr(library_version,version_string);
+          if (p != NULL) {
+            ompi_major = atoi(p);
+            ompi_minor = atoi(p+2);
+            strncpy(ompi_patch,p+3,4);
+            for (int c=0; c<sizeof(ompi_patch); c++) {
+              if (ompi_patch[c] == ',') {
+                ompi_patch[c] = '\0';
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
+      *major = ompi_major;
+      *minor = ompi_minor;
+      strncpy(patch, ompi_patch, sizeof(ompi_patch));
+    }
+
+    if (is_impi) {
+      *impl = ARMCII_INTEL_MPI;
+      int impi_major = 0;
+      int impi_minor = 0;
+      char impi_patch[6] = {0}; /* ".PrcX" is max since major=2+ */
+      for (int major = 2030; major >= 2000; major--) {
+        for (int minor = 30; minor >= 0; minor--) {
+          char version_string[7] = {0};
+          sprintf(version_string,"%d.%d",major,minor);
+          char * p = strstr(library_version,version_string);
+          if (p != NULL) {
+            impi_major = atoi(p);
+            impi_minor = atoi(p+5);
+            break;
+          }
+        }
+      }
+      *major = impi_major;
+      *minor = impi_minor;
+      *patch = '\0';
+    }
+}
+
 /* -- begin weak symbols block -- */
 #if defined(HAVE_PRAGMA_WEAK)
 #  pragma weak ARMCI_Init_thread_comm = PARMCI_Init_thread_comm
@@ -96,6 +197,30 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
     if (!mpi_is_init || mpi_is_fin) {
       ARMCII_Error("MPI must be initialized before calling ARMCI_Init");
     }
+  }
+
+  ARMCII_GLOBAL_STATE.verbose = ARMCII_Getenv_int("ARMCI_VERBOSE", 0);
+
+  /* Figure out what MPI library we are using, in an attempt to work around bugs. */
+  char mpi_library_version[MPI_MAX_LIBRARY_VERSION_STRING] = {0};
+  char mpi_library_version_short[32] = {0};
+  enum ARMCII_MPI_Impl_e mpi_implementation;
+  int mpi_impl_major = 0;
+  int mpi_impl_minor = 0;
+  char mpi_impl_patch[8] = {0};
+  {
+    int len;
+    MPI_Get_library_version(mpi_library_version, &len);
+    /* Truncate after 32 columns of 1 line to simplify parsing. */
+    strncpy(mpi_library_version_short, mpi_library_version, 31);
+    for (int c=0; c<sizeof(mpi_library_version_short); c++) {
+      if (mpi_library_version[c] == '\r' || mpi_library_version[c] == '\n') {
+        mpi_library_version_short[c] = '\0';
+        break;
+      }
+    }
+    ARMCII_Parse_library_version(mpi_library_version_short, &mpi_implementation,
+                                 &mpi_impl_major, &mpi_impl_minor, mpi_impl_patch);
   }
 
   /* Check for MPI thread-support */
@@ -131,14 +256,6 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
 #endif /* ENABLE_PROGRESS */
   }
 
-  /* Set defaults */
-#ifdef ARMCI_GROUP
-  ARMCII_GLOBAL_STATE.noncollective_groups = 1;
-#endif
-#ifdef NO_SEATBELTS
-  ARMCII_GLOBAL_STATE.iov_checks           = 0;
-#endif
-
   /* Check for debugging flags */
 
   ARMCII_GLOBAL_STATE.debug_alloc          = ARMCII_Getenv_bool("ARMCI_DEBUG_ALLOC", 0);
@@ -149,16 +266,22 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
       ARMCII_Warning("ARMCI_FLUSH_BARRIERS is deprecated.\n");
     }
   }
-  ARMCII_GLOBAL_STATE.verbose              = ARMCII_Getenv_bool("ARMCI_VERBOSE", 0);
 
   /* Group formation options */
 
-  ARMCII_GLOBAL_STATE.cache_rank_translation=ARMCII_Getenv_bool("ARMCI_CACHE_RANK_TRANSLATION", 1);
-  if (ARMCII_Getenv("ARMCI_NONCOLLECTIVE_GROUPS"))
+#ifdef ARMCI_GROUP
+  ARMCII_GLOBAL_STATE.noncollective_groups = 1;
+#endif
+  if (ARMCII_Getenv("ARMCI_NONCOLLECTIVE_GROUPS")) {
     ARMCII_GLOBAL_STATE.noncollective_groups = ARMCII_Getenv_bool("ARMCI_NONCOLLECTIVE_GROUPS", 0);
+  }
+  ARMCII_GLOBAL_STATE.cache_rank_translation=ARMCII_Getenv_bool("ARMCI_CACHE_RANK_TRANSLATION", 1);
 
   /* Check for IOV flags */
 
+#ifdef NO_SEATBELTS
+  ARMCII_GLOBAL_STATE.iov_checks           = 0;
+#endif
   ARMCII_GLOBAL_STATE.iov_checks           = ARMCII_Getenv_bool("ARMCI_IOV_CHECKS", 0);
   ARMCII_GLOBAL_STATE.iov_batched_limit    = ARMCII_Getenv_int("ARMCI_IOV_BATCHED_LIMIT", 0);
 
@@ -233,7 +356,7 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
     }
   }
 
-  /* Use win_allocate or not, to work around MPI-3 RMA implementation bugs (now fixed) in MPICH. */
+  /* Use win_allocate or not, to work around MPI-3 RMA implementation bugs. */
   ARMCII_GLOBAL_STATE.use_win_allocate=ARMCII_Getenv_int("ARMCI_USE_WIN_ALLOCATE", 1);
 
   /* Equivalent to ARMCI_Set_shm_limit - determines the size of:
@@ -247,11 +370,21 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
   /* Poke the MPI progress engine at the end of nonblocking (NB) calls */
   ARMCII_GLOBAL_STATE.explicit_nb_progress=ARMCII_Getenv_bool("ARMCI_EXPLICIT_NB_PROGRESS", 1);
 
-  /* Pass alloc_shm to win_allocate / alloc_mem */
+  /* Pass alloc_shm=<this> to win_allocate / alloc_mem */
   ARMCII_GLOBAL_STATE.use_alloc_shm=ARMCII_Getenv_bool("ARMCI_USE_ALLOC_SHM", 1);
 
-  /* Enable RMA element-wise atomicity */
+  /* Pass disable_shm_accumulate=<this> to window constructor */
+  ARMCII_GLOBAL_STATE.disable_shm_accumulate=ARMCII_Getenv_bool("ARMCI_DISABLE_SHM_ACC", 0);
+
+  /* Pass accumulate_ops = same_op info key to window constructor */
+  ARMCII_GLOBAL_STATE.use_same_op=ARMCII_Getenv_bool("ARMCI_USE_SAME_OP", 0);
+
+  /* Enable RMA element-wise atomicity (affects ARMCI Put/Get) */
   ARMCII_GLOBAL_STATE.rma_atomicity=ARMCII_Getenv_bool("ARMCI_RMA_ATOMICITY", 1);
+
+  /* RMA ordering info key - this is the actual string we pass to MPI */
+  ARMCII_Getenv_char(ARMCII_GLOBAL_STATE.rma_ordering, "ARMCI_RMA_ORDERING", "rar,raw,war,waw",
+                     sizeof(ARMCII_GLOBAL_STATE.rma_ordering)-1);
 
   /* Flush_local becomes flush */
   ARMCII_GLOBAL_STATE.end_to_end_flush=ARMCII_Getenv_bool("ARMCI_NO_FLUSH_LOCAL", 0);
@@ -303,13 +436,35 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
 
   ARMCII_GLOBAL_STATE.init_count++;
 
-  if (ARMCII_GLOBAL_STATE.verbose) {
+  if (ARMCII_GLOBAL_STATE.verbose > 0) {
     if (ARMCI_GROUP_WORLD.rank == 0) {
       int major, minor;
 
       MPI_Get_version(&major, &minor);
 
-      printf("ARMCI-MPI initialized with %d process%s, MPI v%d.%d\n", ARMCI_GROUP_WORLD.size, ARMCI_GROUP_WORLD.size > 1 ? "es":"", major, minor);
+      printf("ARMCI-MPI initialized with %d process%s, MPI v%d.%d\n",
+             ARMCI_GROUP_WORLD.size, ARMCI_GROUP_WORLD.size > 1 ? "es":"", major, minor);
+
+      /* tell user what MPI library they are using */
+      if (ARMCII_GLOBAL_STATE.verbose > 1) {
+        printf("=======\n");
+        printf("  MPI library version    = %s", mpi_library_version);
+        printf("=======\n");
+      } else {
+        if (mpi_implementation == ARMCII_OPEN_MPI) {
+          printf("  Open MPI version       = %d.%d%s\n", mpi_impl_major, mpi_impl_minor, mpi_impl_patch);
+        }
+        else if (mpi_implementation == ARMCII_MPICH) {
+          printf("  MPICH version          = %d.%d%s\n", mpi_impl_major, mpi_impl_minor, mpi_impl_patch);
+        }
+        else if (mpi_implementation == ARMCII_INTEL_MPI) {
+          printf("  Intel MPI version      = %d.%d%s\n", mpi_impl_major, mpi_impl_minor, mpi_impl_patch);
+        }
+        else if (mpi_implementation == ARMCII_UNKNOWN_MPI) {
+          printf("  Unknown MPI version    = %s\n", mpi_library_version);
+        }
+      }
+
 #ifdef NO_SEATBELTS
       printf("  NO_SEATBELTS           = ENABLED\n");
 #endif
@@ -352,9 +507,6 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
           printf("  SHM_LIMIT              = %s\n", "UNLIMITED");
       }
 
-      printf("  ALLOC_SHM used         = %s\n", ARMCII_GLOBAL_STATE.use_alloc_shm ? "TRUE" : "FALSE");
-      printf("  MPI_MODE_NOCHECK used  = %s\n", ARMCII_GLOBAL_STATE.rma_nocheck   ? "TRUE" : "FALSE");
-
       if (ARMCII_GLOBAL_STATE.use_win_allocate == 0) {
           printf("  WINDOW type used       = %s\n", "CREATE");
       }
@@ -371,15 +523,6 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
           ARMCII_Error("You have selected an invalid window type (%d)!\n", ARMCII_GLOBAL_STATE.use_win_allocate);
       }
 
-      if (ARMCII_GLOBAL_STATE.use_win_allocate == 1) {
-          /* Jeff: Using win_allocate leads to correctness issues with some
-           *       MPI implementations since 3c4ad2abc8c387fcdec3a7f3f44fa5fd75653ece. */
-          /* This is required on Cray systems with CrayMPI 7.0.0 (at least) */
-          /* Update (Feb. 2015): Xin and Min found the bug in Fetch_and_op and
-           *                     it is fixed upstream. */
-          ARMCII_Warning("MPI_Win_allocate can lead to correctness issues.\n");
-      }
-
       printf("  STRIDED_METHOD         = %s\n", ARMCII_Strided_methods_str[ARMCII_GLOBAL_STATE.strided_method]);
       printf("  IOV_METHOD             = %s\n", ARMCII_Iov_methods_str[ARMCII_GLOBAL_STATE.iov_method]);
 
@@ -391,9 +534,18 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
         }
       }
 
+      /* MPI RMA semantics */
       printf("  RMA_ATOMICITY          = %s\n", ARMCII_GLOBAL_STATE.rma_atomicity          ? "TRUE" : "FALSE");
       printf("  NO_FLUSH_LOCAL         = %s\n", ARMCII_GLOBAL_STATE.end_to_end_flush       ? "TRUE" : "FALSE");
+      printf("  RMA_NOCHECK            = %s\n", ARMCII_GLOBAL_STATE.rma_nocheck            ? "TRUE" : "FALSE");
 
+      /* MPI info set on window */
+      printf("  USE_ALLOC_SHM          = %s\n", ARMCII_GLOBAL_STATE.use_alloc_shm          ? "TRUE" : "FALSE");
+      printf("  DISABLE_SHM_ACC        = %s\n", ARMCII_GLOBAL_STATE.disable_shm_accumulate ? "TRUE" : "FALSE");
+      printf("  USE_SAME_OP            = %s\n", ARMCII_GLOBAL_STATE.use_same_op            ? "TRUE" : "FALSE");
+      printf("  RMA_ORDERING           = %s\n", ARMCII_GLOBAL_STATE.rma_ordering);
+
+      /* ARMCI-MPI internal options */
       printf("  IOV_CHECKS             = %s\n", ARMCII_GLOBAL_STATE.iov_checks             ? "TRUE" : "FALSE");
       printf("  SHR_BUF_METHOD         = %s\n", ARMCII_Shr_buf_methods_str[ARMCII_GLOBAL_STATE.shr_buf_method]);
       printf("  NONCOLLECTIVE_GROUPS   = %s\n", ARMCII_GLOBAL_STATE.noncollective_groups   ? "TRUE" : "FALSE");
@@ -401,6 +553,22 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
       printf("  DEBUG_ALLOC            = %s\n", ARMCII_GLOBAL_STATE.debug_alloc            ? "TRUE" : "FALSE");
       printf("\n");
       fflush(NULL);
+    }
+
+    if ((ARMCII_GLOBAL_STATE.use_win_allocate == 1) && (ARMCI_GROUP_WORLD.rank == 0)) {
+        /* Jeff: Using win_allocate leads to correctness issues with some MPI implementations.*/
+        /* This is required on Cray systems with CrayMPI 7.0.0 (at least). */
+        /* Update (Feb. 2015): Xin and Min found the bug in Fetch_and_op and it is fixed in
+         *      https://github.com/pmodels/mpich/commit/bad898f9df13b5060cbf43ee4acdb3b7b4c9a0f7 */
+        /* Update (Aug. 2022): it has reappeared in MPICH 4.x, per
+         *      https://github.com/pmodels/mpich/issues/6110 */
+        printf("  Warning: MPI_Win_allocate can lead to correctness issues.\n");
+        if ((mpi_implementation == ARMCII_MPICH) && (mpi_impl_major     == 4)) {
+          printf("           There is a good chance your implementation is affected!\n");
+          printf("           See https://github.com/pmodels/mpich/issues/6110 for details.\n");
+        }
+        printf("\n");
+        fflush(NULL);
     }
 
     MPI_Barrier(ARMCI_GROUP_WORLD.comm);
@@ -447,6 +615,27 @@ int PARMCI_Init_thread(int armci_requested) {
 
 /* -- begin weak symbols block -- */
 #if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Init_mpi_comm = PARMCI_Init_mpi_comm
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Init_mpi_comm ARMCI_Init_mpi_comm
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Init_mpi_comm as PARMCI_Init_mpi_comm
+#endif
+/* -- end weak symbols block -- */
+
+/** Initialize ARMCI.  MPI must be initialized before this can be called.  It
+  * is invalid to make ARMCI calls before initialization.  Collective on the
+  * world group.
+  *
+  * @return            Zero on success
+  */
+int PARMCI_Init_mpi_comm(MPI_Comm comm) {
+  return PARMCI_Init_thread_comm(MPI_THREAD_SINGLE, comm);
+}
+
+
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
 #  pragma weak ARMCI_Init_args = PARMCI_Init_args
 #elif defined(HAVE_PRAGMA_HP_SEC_DEF)
 #  pragma _HP_SECONDARY_DEF PARMCI_Init_args ARMCI_Init_args
@@ -464,7 +653,7 @@ int PARMCI_Init_thread(int armci_requested) {
   * @return            Zero on success
   */
 int PARMCI_Init_args(int *argc, char ***argv) {
-  return PARMCI_Init_thread(MPI_THREAD_SINGLE);
+  return PARMCI_Init_thread_comm(MPI_THREAD_SINGLE, MPI_COMM_WORLD);
 }
 
 
@@ -485,7 +674,7 @@ int PARMCI_Init_args(int *argc, char ***argv) {
   * @return            Zero on success
   */
 int PARMCI_Init(void) {
-  return PARMCI_Init_thread(MPI_THREAD_SINGLE);
+  return PARMCI_Init_thread_comm(MPI_THREAD_SINGLE, MPI_COMM_WORLD);
 }
 
 
@@ -555,8 +744,9 @@ int PARMCI_Finalize(void) {
 
   nfreed = gmr_destroy_all();
 
-  if (nfreed > 0 && ARMCI_GROUP_WORLD.rank == 0)
+  if (nfreed > 0 && ARMCI_GROUP_WORLD.rank == 0) {
     ARMCII_Warning("Freed %d leaked allocations\n", nfreed);
+  }
 
   /* Free GOP operators */
 

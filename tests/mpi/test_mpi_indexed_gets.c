@@ -15,11 +15,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <mpi.h>
 
 #define XDIM 8
 #define YDIM 1024
-#define SUB_XDIM 8
+#define SUB_XDIM 4
 #define SUB_YDIM 256
 
 int main(int argc, char **argv) {
@@ -44,8 +45,10 @@ int main(int argc, char **argv) {
     if (rank == 0)
         printf("MPI RMA Strided Get Test:\n");
 
-    for (i = 0; i < XDIM*YDIM; i++)
+    for (i = 0; i < XDIM*YDIM; i++) {
         *(win_buf + i) = 1.0 + rank;
+        *(loc_buf + i) = 1.0 + rank;
+    }
 
     MPI_Win_create(win_buf, bufsize, 1, MPI_INFO_NULL, MPI_COMM_WORLD, &buf_win);
 
@@ -88,7 +91,7 @@ int main(int argc, char **argv) {
       for (j = 0; j < SUB_YDIM; j++) {
         const double actual   = *(loc_buf + i + j*XDIM);
         const double expected = (1.0 + peer);
-        if (actual - expected > 1e-10) {
+        if (fabs(actual - expected) > 1e-10) {
           printf("%d: Data validation failed at [%d, %d] expected=%f actual=%f\n",
               rank, j, i, expected, actual);
           errors++;
@@ -100,7 +103,7 @@ int main(int argc, char **argv) {
       for (j = 0; j < SUB_YDIM; j++) {
         const double actual   = *(loc_buf + i + j*XDIM);
         const double expected = 1.0 + rank;
-        if (actual - expected > 1e-10) {
+        if (fabs(actual - expected) > 1e-10) {
           printf("%d: Data validation failed at [%d, %d] expected=%f actual=%f\n",
               rank, j, i, expected, actual);
           errors++;
@@ -112,7 +115,7 @@ int main(int argc, char **argv) {
       for (j = SUB_YDIM; j < YDIM; j++) {
         const double actual   = *(loc_buf + i + j*XDIM);
         const double expected = 1.0 + rank;
-        if (actual - expected > 1e-10) {
+        if (fabs(actual - expected) > 1e-10) {
           printf("%d: Data validation failed at [%d, %d] expected=%f actual=%f\n",
               rank, j, i, expected, actual);
           errors++;
