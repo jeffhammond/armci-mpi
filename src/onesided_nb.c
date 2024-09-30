@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include <armci.h>
+#include <armci_internals.h>
 #include <debug.h>
 #include <gmr.h>
 
@@ -13,7 +14,7 @@
   */
 void ARMCI_INIT_HANDLE(armci_hdl_t *handle) {
   if (handle!=NULL) {
-    handle->aggregate =  0;
+    handle->aggregate =  ARMCII_GLOBAL_STATE.agg_handle_init;
     handle->target    = -1;
   } else {
     ARMCII_Warning("ARMCI_INIT_HANDLE given NULL handle");

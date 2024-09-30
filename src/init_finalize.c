@@ -393,6 +393,9 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
   /* Use MPI_MODE_NOCHECK assertion */
   ARMCII_GLOBAL_STATE.rma_nocheck=ARMCII_Getenv_bool("ARMCI_RMA_NOCHECK", 1);
 
+  /* Aggregate handle initialization on */
+  ARMCII_GLOBAL_STATE.agg_handle_init=ARMCII_Getenv_bool("ARMCI_AGG_HANDLE_INIT", 1);
+
   /* Setup groups and communicators */
 
   MPI_Comm_dup(comm, &ARMCI_GROUP_WORLD.comm);
@@ -552,6 +555,7 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
       printf("  NONCOLLECTIVE_GROUPS   = %s\n", ARMCII_GLOBAL_STATE.noncollective_groups   ? "TRUE" : "FALSE");
       printf("  CACHE_RANK_TRANSLATION = %s\n", ARMCII_GLOBAL_STATE.cache_rank_translation ? "TRUE" : "FALSE");
       printf("  DEBUG_ALLOC            = %s\n", ARMCII_GLOBAL_STATE.debug_alloc            ? "TRUE" : "FALSE");
+      printf("  AGG_HANDLE_INIT        = %s\n", ARMCII_GLOBAL_STATE.agg_handle_init        ? "TRUE" : "FALSE");
       printf("\n");
       fflush(NULL);
     }
