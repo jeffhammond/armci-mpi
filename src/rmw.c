@@ -42,13 +42,7 @@ int PARMCI_Rmw(int op, void *ploc, void *prem, int value, int proc)
   int is_swap = 0, is_long = 0;
   MPI_Datatype type;
   MPI_Op       rop;
-  gmr_t *src_mreg, *dst_mreg;
-
-  /* If NOGUARD is set, assume the buffer is not shared */
-  if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD)
-    src_mreg = gmr_lookup(ploc, ARMCI_GROUP_WORLD.rank);
-  else
-    src_mreg = NULL;
+  gmr_t *dst_mreg;
 
   dst_mreg = gmr_lookup(prem, proc);
 
@@ -69,8 +63,6 @@ int PARMCI_Rmw(int op, void *ploc, void *prem, int value, int proc)
     rop = MPI_SUM;
   else
     ARMCII_Error("invalid operation (%d)", op);
-
-  /* We hold the DLA lock if (src_mreg != NULL). */
 
   if (is_swap) {
 
