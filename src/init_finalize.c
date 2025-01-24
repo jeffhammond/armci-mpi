@@ -127,7 +127,7 @@ static void ARMCII_Parse_library_version(char * library_version, enum ARMCII_MPI
             ompi_major = atoi(p);
             ompi_minor = atoi(p+2);
             strncpy(ompi_patch,p+3,4);
-            for (int c=0; c<sizeof(ompi_patch); c++) {
+            for (int c=0; c<(int)sizeof(ompi_patch); c++) {
               if (ompi_patch[c] == ',') {
                 ompi_patch[c] = '\0';
                 break;
@@ -213,7 +213,7 @@ int PARMCI_Init_thread_comm(int armci_requested, MPI_Comm comm) {
     MPI_Get_library_version(mpi_library_version, &len);
     /* Truncate after 32 columns of 1 line to simplify parsing. */
     strncpy(mpi_library_version_short, mpi_library_version, 31);
-    for (int c=0; c<sizeof(mpi_library_version_short); c++) {
+    for (int c=0; c<(int)sizeof(mpi_library_version_short); c++) {
       if (mpi_library_version[c] == '\r' || mpi_library_version[c] == '\n') {
         mpi_library_version_short[c] = '\0';
         break;
@@ -670,6 +670,8 @@ int PARMCI_Init_mpi_comm(MPI_Comm comm) {
   * @return            Zero on success
   */
 int PARMCI_Init_args(int *argc, char ***argv) {
+  (void)argc;
+  (void)argv;
   return PARMCI_Init_thread_comm(MPI_THREAD_SINGLE, MPI_COMM_WORLD);
 }
 
