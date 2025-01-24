@@ -180,7 +180,7 @@ long ARMCII_Getenv_long(const char *varname, long default_value) {
 void ARMCII_Getenv_char(char * output, const char *varname, const char *default_value, int length) {
   const char *var = getenv(varname);
   if (var) {
-    if (strlen(var) > length) {
+    if (strlen(var) > (size_t)length) {
       ARMCII_Warning("ARMCI_Getenv_char: %s = %s is too long (%d)\n", varname, var, length);
     }
     strncpy(output, var, length);
