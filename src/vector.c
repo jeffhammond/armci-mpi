@@ -20,15 +20,14 @@
   * @param[in] iov      Vector of transfer information.
   * @return             Logical true when regions overlap, 0 otherwise.
   */
-int ARMCII_Iov_check_overlap(void **ptrs, int count, int size) {
-#ifndef NO_CHECK_OVERLAP
-#ifdef NO_USE_CTREE
-  int i, j;
-
+int ARMCII_Iov_check_overlap(void **ptrs, int count, int size)
+{
   if (!ARMCII_GLOBAL_STATE.iov_checks) return 0;
 
-  for (i = 0; i < count; i++) {
-    for (j = i+1; j < count; j++) {
+#ifndef NO_CHECK_OVERLAP
+#ifdef NO_USE_CTREE
+  for (int i = 0; i < count; i++) {
+    for (int j = i+1; j < count; j++) {
       const uint8_t *ptr_1_lo = ptrs[i];
       const uint8_t *ptr_1_hi = ((uint8_t*)ptrs[i]) + size - 1;
       const uint8_t *ptr_2_lo = ptrs[j];
@@ -44,12 +43,9 @@ int ARMCII_Iov_check_overlap(void **ptrs, int count, int size) {
     }
   }
 #else
-  int i;
   ctree_t ctree = CTREE_EMPTY;
 
-  if (!ARMCII_GLOBAL_STATE.iov_checks) return 0;
-
-  for (i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
     int conflict = ctree_insert(&ctree, ptrs[i], ((uint8_t*)ptrs[i]) + size - 1);
 
     if (conflict) {
