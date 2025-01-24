@@ -146,10 +146,10 @@ static void ARMCII_Parse_library_version(char * library_version, enum ARMCII_MPI
       *impl = ARMCII_INTEL_MPI;
       int impi_major = 0;
       int impi_minor = 0;
-      char impi_patch[6] = {0}; /* ".PrcX" is max since major=2+ */
+      //char impi_patch[6] = {0}; /* ".PrcX" is max since major=2+ */
       for (int major = 2030; major >= 2000; major--) {
         for (int minor = 30; minor >= 0; minor--) {
-          char version_string[7] = {0};
+          char version_string[255] = {0};
           sprintf(version_string,"%d.%d",major,minor);
           char * p = strstr(library_version,version_string);
           if (p != NULL) {
