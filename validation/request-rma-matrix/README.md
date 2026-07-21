@@ -47,12 +47,21 @@ OSC with their interface/device selection variables.
 
 For TCP, Open MPI uses transport-specific component selections.  UCX RMA uses
 the UCX OSC while OB1/TCP carries MPI point-to-point traffic, because the UCX
-PML intentionally refuses a TCP-only UCX configuration.  Open MPI 5 OFI/TCP is
-reported as unavailable: its OFI BTL requires native RDMA and atomic
-capabilities that the libfabric TCP provider does not supply, and this Open MPI
-installation has no pt2pt OSC that could implement RMA over OFI MTL messages.
-MPICH 5 OFI/TCP remains fully exercised with `FI_PROVIDER=tcp` and
-`FI_TCP_IFACE=ib0_mlx5`.
+PML intentionally refuses a TCP-only UCX configuration.  The original matrix
+reported Open MPI 5 OFI/TCP as unavailable because the normal component
+selection rejected the libfabric TCP provider's capabilities and the install
+had no pt2pt OSC fallback.  A later diagnostic forced `osc=rdma`, selected the
+OFI BTL for RMA, and reached the tests over TCP/IPoIB, but the full suite still
+exceeded five minutes.  MPICH 5 OFI/TCP remains fully exercised with
+`FI_PROVIDER=tcp` and `FI_TCP_IFACE=ib0_mlx5`.
+
+A later Open MPI 5 OFI provider sweep found a complete passing configuration
+with `FI_PROVIDER=psm3`: the preferred safe ARMCI tuple passed 43/43 on both
+Iris and Thor in 2m55s and 3m03s, respectively.  The same full suite exceeded
+five minutes with verbs/RXD and TCP over IPoIB.  See
+[`ROOT-CAUSE-RESULTS.md`](ROOT-CAUSE-RESULTS.md#open-mpi-5-ofi-provider-comparison)
+for the exact environment, provider controls, evidence locations, and the
+limitation that the PSM3 runs did not record a selected NIC.
 
 Typical use is:
 

@@ -36,7 +36,7 @@ The complete diagnostic logs are under:
 | Any request-atomic configuration with `FLUSH_REQUEST_ATOMICS=0` | ARMCI completion-semantics defect; `MPI_Wait` does not provide target completion | Force `FLUSH_REQUEST_ATOMICS=1` when request atomics are enabled |
 | Open MPI 4/UCX IPoIB timeouts | Slow and variable, but the isolated test completes; the whole-suite witness still exceeded five minutes | Keep these tuples failed; no additional stuck MPI call was localized |
 | Open MPI 5/UCX IPoIB `rmw_perf` timeout | Extreme atomic latency, not a hang | Treat the original bound as a test failure; no correctness workaround is indicated |
-| Open MPI 5/OFI IB timeouts | Tests show forward progress but are extremely slow; the preferred whole-suite witness exceeded five minutes | Keep all original timeout tuples failed |
+| Open MPI 5/OFI with verbs/RXD or TCP over IPoIB | Tests show forward progress but are extremely slow; the preferred whole-suite witness exceeded five minutes | Keep these provider tuples failed; use the validated PSM3 provider where available |
 
 ## Open MPI 5 UCX outstanding-`MPI_Rput` failure
 
@@ -192,6 +192,62 @@ cancelled (jobs 621225 and 621226).  This is sufficient to reject the tuples
 under the required five-minute bound, while the retained benchmark output
 supports severe performance as the observed cause rather than a demonstrated
 stuck MPI call.
+
+## Open MPI 5 OFI provider comparison
+
+The Open MPI 5 OFI result is provider-dependent rather than a failure of every
+OFI configuration.  A follow-up sweep used Open MPI 5.0.10rc2 with
+`osc=rdma`, `osc_rdma_btls=ofi`, two nodes, and one rank per node.  Every run
+used `ARMCI_VERBOSE=2` and the preferred safe ARMCI configuration:
+
+```text
+ARMCI_USE_WIN_ALLOCATE=1
+ARMCI_STRIDED_METHOD=DIRECT
+ARMCI_IOV_METHOD=BATCHED
+ARMCI_RMA_ATOMICITY=0
+ARMCI_USE_REQUEST_ATOMICS=0
+ARMCI_FLUSH_REQUEST_ATOMICS=1
+```
+
+The complete `make check` results were:
+
+| OFI provider | Network selection | Iris | Thor | Conclusion |
+| --- | --- | --- | --- | --- |
+| `psm3` | Provider selected with `FI_PROVIDER=psm3`; no NIC was explicitly pinned | 43/43 in 2m55s | 43/43 in 3m03s | Validated Open MPI 5/OFI configuration |
+| `verbs;ofi_rxd` | `FI_VERBS_DEVICE_NAME=mlx5_0` | Timed out at 5m03s after the contiguous and strided benchmarks failed their per-test bounds | Not rerun | Fails the required five-minute bound |
+| `tcp` | IPoIB interface `ib0_mlx5` | Timed out at 5m02s after the contiguous and strided benchmarks failed their per-test bounds | Not rerun | Fails the required five-minute bound |
+
+The PSM3 runs completed all 43 tests, including the contiguous and strided
+benchmarks that exhausted the time budget with verbs/RXD and TCP.  They did
+not set `OMPI_MCA_btl_ofi_progress_interval`, so the passing result does not
+depend on the previously tested 100-microsecond progress interval.  A smaller
+provider probe also measured 1,000 fetch-and-add operations at approximately
+9.95 microseconds per operation with PSM3, compared with 147.49 microseconds
+with verbs/RXM and 11.73 microseconds with verbs/RXD.  The probe's scalar
+one-sided correctness test passed with all three providers; the differentiator
+in the full suite was runtime, especially the contiguous and strided
+benchmarks.
+
+The PSM3 launcher did not constrain or print the selected NIC.  Therefore,
+these jobs prove that the PSM3 OFI provider is a viable Open MPI 5 validation
+configuration on Iris and Thor, but the retained evidence must not be cited as
+proof that PSM3 used a particular physical interface.  In contrast, the TCP
+control was explicitly bound to IPoIB and the verbs/RXD control was explicitly
+bound to the InfiniBand device.
+
+The full-suite logs are retained at:
+
+```text
+/global/home/users/jehammond/Claude/armci-val/ompi5-ofi-rootcause-6d28fce/full/psm3/slurm-621374.log
+/global/home/users/jehammond/Claude/armci-val/ompi5-ofi-rootcause-6d28fce/full/psm3-thor/slurm-621375.log
+/global/home/users/jehammond/Claude/armci-val/ompi5-ofi-rootcause-6d28fce/full/verbs-rxd/slurm-621373.log
+/global/home/users/jehammond/Claude/armci-val/ompi5-ofi-rootcause-6d28fce/full/tcp-ipoib/slurm-621368.log
+```
+
+The corresponding provider probes and launchers are under
+`ompi5-ofi-rootcause-6d28fce/probe` and
+`ompi5-ofi-rootcause-6d28fce/full`.  The diagnostic source snapshot is
+identified by commit `6d28fce` in the result-directory name.
 
 ## Code-state warning
 
