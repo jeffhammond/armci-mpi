@@ -3,14 +3,14 @@
  *             Armci Version                      *
  *             Block and Cyclic distribution      *
  **************************************************/
-#include <stdio.h>
-
 /* per http://linux.die.net/man/3/srand48,
  * _XOPEN_SOURCE (or _SVID_SOURCE) is required
  * for srand48. */
 #ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600
 #endif
+
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <math.h>
